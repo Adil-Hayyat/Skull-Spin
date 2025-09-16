@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Whealy — Spin & Win (Prototype)</title>
+<style>
+  :root{
+    --bg:#0b1220; --card:#0f1b2a; --accent:#e14a3c; --muted:#9aa4b2;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  body{margin:0; font-family:Inter,Arial; background:linear-gradient(180deg,#071023,#0c1220); color:#e6eef6; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1050px;margin:18px auto;padding:18px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  header h1{margin:0;font-size:20px}
+  .layout{display:grid;grid-template-columns:360px 1fr;gap:18px;margin-top:16px}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+  /* left panel */
+  .panel{background:var(--card);padding:14px;border-radius:12px;border:1px solid rgba(255,255,255,0.02)}
+  .small{font-size:13px;color:var(--muted)}
+  label{display:block;margin:8px 0 6px;font-weight:600}
+  input,select{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+  button{padding:10px 12px;border-radius:8px;border:0;cursor:pointer;font-weight:700}
+  .btn-primary{background:linear-gradient(90deg,var(--accent),#ff7a62);color:white}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+  .muted{color:var(--muted);font-size:13px}
+
+  /* account area */
+  .account-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .account-pill{background:#0b1724;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.02)}
+  .balance{font-size:18px;font-weight:800;color:#fff}
+
+  /* wheel area */
+  .game-area{display:flex;flex-direction:column;align-items:center;gap:12px;padding:8px}
+  .wheel-wrap{width:min(520px,86vw);aspect-ratio:1/1;position:relative}
+  .wheel{width:100%;height:100%;border-radius:50%;position:relative;overflow:hidden;border:8px solid rgba(255,255,255,0.04);box-shadow:0 14px 30px rgba(2,6,23,0.6)}
+  .needle{position:absolute;left:50%;top:-4%;transform:translateX(-50%);width:4px;height:34%;background:var(--accent);border-radius:4px;z-index:40;box-shadow:0 4px 14px rgba(225,74,60,0.6)}
+  .center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .center .spin-btn{padding:12px 18px;border-radius:999px;background:linear-gradient(90deg,var(--accent),#ff7a62);border:0;color:#fff;font-weight:800;cursor:pointer}
+  .center .info{font-size:13px;color:var(--muted)}
+
+  /* slices — we'll create using many divs rotated */
+  .slice{position:absolute;width:50%;height:50%;left:50%;top:0;transform-origin:0% 100%;overflow:hidden}
+  .slice .inner{position:absolute;left:0;bottom:0;width:200%;height:200%;border-radius:50% 50% 0 0/100% 100% 0 0;display:flex;align-items:flex-end;justify-content:flex-end;padding-right:12px;font-weight:800;color:#fff}
+
+  /* log / history */
+  .log{max-height:200px;overflow:auto;padding:8px;background:var(--glass);border-radius:8px;border:1px solid rgba(255,255,255,0.02);font-size:13px}
+  .qr-row{display:flex;gap:10px;align-items:center;margin-top:10px}
+  .qr{width:110px;height:110px;border-radius:8px;background:#071023;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;border:1px dashed rgba(255,255,255,0.04)}
+
+  /* helpers */
+  .row{display:flex;gap:8px;align-items:center}
+  .centered{text-align:center}
+  .small-muted{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>Whealy — Spin & Win (Prototype)</h1>
+      <div class="small-muted">Spin cost: <strong>10 PKR</strong> • 10 spins per 24h max • Free: 1 spin on signup</div>
+    </header>
+
+    <div class="layout">
+      <!-- LEFT: account & controls -->
+      <div class="panel">
+        <h3>Account</h3>
+        <div id="accountArea" class="small-muted">
+          <div id="noAccount">
+            <label>Username</label>
+            <input id="su-user" placeholder="username (e.g. adil123)">
+            <label>Payment Provider</label>
+            <select id="su-provider"><option>JazzCash</option><option>EasyPaisa</option></select>
+            <label>Account Number</label>
+            <input id="su-acc" placeholder="03xx... or 923xx...">
+            <label>Password</label>
+            <input id="su-pass" type="password" placeholder="password">
+            <label>Confirm Password</label>
+            <input id="su-pass2" type="password" placeholder="confirm password">
+            <div style="margin-top:10px" class="row">
+              <button class="btn-primary" id="btnCreate">Create Account</button>
+              <button class="btn-ghost" id="btnDemo">Use Demo</button>
+            </div>
+            <p class="small-muted" style="margin-top:8px">On create, an email compose window will open to send your account details to the admin (demo): <strong>adilhayatramay+Whealy@gmail.com</strong></p>
+          </div>
+
+          <div id="hasAccount" style="display:none">
+            <div class="row" style="justify-content:space-between">
+              <div>
+                <div class="small-muted">Logged in as</div>
+                <div style="font-weight:800" id="acctName">—</div>
+                <div class="small-muted" id="acctProv"></div>
+              </div>
+              <div style="text-align:right">
+                <div class="small-muted">Balance</div>
+                <div class="balance" id="acctBalance">0 PKR</div>
+              </div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label>Add Balance (simulate payment)</label>
+              <div class="row">
+                <select id="payAmount" style="width:140px"><option value="50">50 PKR</option><option value="100">100 PKR</option><option value="200">200 PKR</option><option value="500">500 PKR</option></select>
+                <button class="btn-primary" id="btnAddPay">Add Payment</button>
+              </div>
+
+              <div class="qr-row" id="payBox" style="display:none">
+                <div>
+                  <div class="small-muted">Send to</div>
+                  <div class="account-pill" id="payTarget">JazzCash • 03xx...</div>
+                </div>
+                <div class="qr" id="qrJazz">QR JazzCash</div>
+                <div class="qr" id="qrEasy">QR EasyPaisa</div>
+              </div>
+
+              <div style="margin-top:8px" class="small-muted">After sending payment (off-site), click "I Paid" to confirm and credit balance.</div>
+              <div style="margin-top:8px">
+                <button class="btn-primary" id="btnIPaid" style="display:none">I Paid — Credit Balance</button>
+              </div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label>Session</label>
+              <div class="row">
+                <button class="btn-ghost" id="btnLogout">Logout</button>
+                <button class="btn-ghost" id="btnClear">Reset Local Data</button>
+              </div>
+            </div>
+
+            <div style="margin-top:12px">
+              <div class="small-muted">Spins used (24h): <span id="spinsUsed">0</span>/10</div>
+              <div class="small-muted">Free spin available: <span id="freeSpin">no</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: wheel & log -->
+      <div>
+        <div class="panel game-area">
+          <div style="width:100%;display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div class="small-muted">Status</div>
+              <div id="statusText">Welcome — login or create account to start</div>
+            </div>
+            <div style="text-align:right">
+              <div class="small-muted">Cost per spin</div>
+              <div style="font-weight:800">10 PKR</div>
+            </div>
+          </div>
+
+          <div class="wheel-wrap">
+            <div class="wheel" id="wheel">
+              <div class="needle"></div>
+              <!-- slices will be injected by JS -->
+            </div>
+            <div class="center">
+              <button class="spin-btn" id="spinBtn">SPIN</button>
+              <div class="info small-muted">Click to spin (requires balance or a free spin)</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;justify-content:center">
+            <button id="btnHistory" class="btn-ghost">History</button>
+            <button id="btnRules" class="btn-ghost">Rules</button>
+          </div>
+
+          <div class="log" id="log">
+            <div class="small-muted">Activity log will appear here.</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="small muted center">
+          <div class="panel small-muted">
+            <strong>Probability table</strong>
+            <div style="margin-top:6px">try-again: 20% • 0: 30% • 1: 39% • 10: 10% • 100: 0.6% • 500: 0.3% • 1000: 0.1%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* Whealy prototype - client-only
+   - Uses localStorage for users and session
+   - No real payments or server; mailto used to open an email compose on account creation
+*/
+
+const ADMIN_EMAIL = 'adilhayatramay+Whealy@gmail.com';
+const SPIN_COST = 10;
+const MAX_SPINS_24H = 10;
+
+// prizes + probabilities (weights)
+const prizeTable = [
+  {key:'TRY', label:'Try Again', weight:20, value:0},
+  {key:'0', label:'0', weight:30, value:0},
+  {key:'1', label:'1', weight:39, value:1},
+  {key:'10', label:'10', weight:10, value:10},
+  {key:'100', label:'100', weight:0.6, value:100},
+  {key:'500', label:'500', weight:0.3, value:500},
+  {key:'1000', label:'1000', weight:0.1, value:1000}
+];
+
+// helper: read/store local users
+function loadUsers(){ return JSON.parse(localStorage.getItem('whealy_users')||'{}'); }
+function saveUsers(u){ localStorage.setItem('whealy_users', JSON.stringify(u)); }
+
+function userKey(username){ return `user_${username.toLowerCase()}`; }
+
+// session methods
+function setSession(username){ localStorage.setItem('whealy_session', username); renderAccountArea(); }
+function clearSession(){ localStorage.removeItem('whealy_session'); renderAccountArea(); }
+function getSession(){ return localStorage.getItem('whealy_session'); }
+
+// spin tracking: track per-user spins with timestamps array
+function getSpinData(user){ return JSON.parse(localStorage.getItem('whealy_spins_'+user) || '{"ts":0,"count":0}'); }
+function setSpinData(user,obj){ localStorage.setItem('whealy_spins_'+user, JSON.stringify(obj)); }
+
+// helpers
+function el(id){ return document.getElementById(id); }
+function log(msg){ const lg = el('log'); const d = document.createElement('div'); d.textContent = `[${(new Date()).toLocaleString()}] ${msg}`; lg.prepend(d); }
+
+// initialize UI
+function renderAccountArea(){
+  const session = getSession();
+  if(!session){ document.getElementById('noAccount').style.display='block'; document.getElementById('hasAccount').style.display='none'; el('statusText').textContent = 'Please create an account or demo to start.'; return; }
+  document.getElementById('noAccount').style.display='none'; document.getElementById('hasAccount').style.display='block';
+  const users = loadUsers();
+  const data = users[session];
+  if(!data){ clearSession(); renderAccountArea(); return; }
+  el('acctName').textContent = data.username;
+  el('acctProv').textContent = data.provider+' • '+data.account;
+  el('acctBalance').textContent = data.balance + ' PKR';
+  el('spinsUsed').textContent = getSpinsUsedWithin24h(session);
+  el('freeSpin').textContent = data.freeSpin ? 'yes' : 'no';
+  el('statusText').textContent = `Welcome ${data.username}. Balance: ${data.balance} PKR`;
+}
+
+// create account
+el('btnCreate').addEventListener('click', ()=>{
+  const u = el('su-user').value.trim();
+  const prov = el('su-provider').value;
+  const acc = el('su-acc').value.trim();
+  const p1 = el('su-pass').value;
+  const p2 = el('su-pass2').value;
+  if(!u || !acc || !p1 || p1!==p2){ alert('Fill fields and ensure passwords match'); return; }
+  const users = loadUsers();
+  if(users[u]){ alert('Username already exists — choose another'); return; }
+  // create
+  users[u] = { username:u, provider:prov, account:acc, pass:p1, balance:0, freeSpin:true };
+  saveUsers(users);
+  setSession(u);
+  // open mailto to admin with account data (user will send)
+  const subject = encodeURIComponent('New Whealy user: ' + u);
+  const body = encodeURIComponent(`New user created:\nUsername: ${u}\nProvider: ${prov}\nAccount: ${acc}\n\n(Prototype - user should verify payment later)`);
+  const mailto = `mailto:${ADMIN_EMAIL}?subject=${subject}&body=${body}`;
+  window.open(mailto,'_blank');
+  renderAccountArea();
+  log('Account created (email composer opened).');
+});
+
+// demo quick account
+el('btnDemo').addEventListener('click', ()=>{
+  const u = 'demo_'+Math.floor(Math.random()*9000+1000);
+  const users = loadUsers();
+  users[u] = { username:u, provider:'JazzCash', account:'0300-XXXX', pass:'demo', balance:100, freeSpin:true };
+  saveUsers(users);
+  setSession(u);
+  renderAccountArea();
+  log('Demo account created: '+u);
+});
+
+// logout / reset
+el('btnLogout').addEventListener('click', ()=>{
+  clearSession(); log('Logged out'); 
+});
+el('btnClear').addEventListener('click', ()=>{
+  if(confirm('Clear all local demo data? This will remove users and session from this browser.')){ localStorage.clear(); location.reload(); }
+});
+
+// payment flow
+el('btnAddPay').addEventListener('click', ()=>{
+  const user = getSession(); if(!user){ alert('Login first'); return; }
+  const users = loadUsers(); const u = users[user];
+  if(!u){ alert('err'); return; }
+  // show pay box & info
+  document.getElementById('payBox').style.display='flex';
+  const provider = u.provider;
+  el('payTarget').textContent = provider + ' • ' + u.account;
+  el('btnIPaid').style.display='inline-block';
+  el('statusText').textContent = 'Send payment using the shown account / QR. Then click "I Paid" to credit.';
+  log('Payment info shown for '+user);
+});
+
+// "I Paid" — simulate crediting balance
+el('btnIPaid').addEventListener('click', ()=>{
+  const user = getSession(); if(!user){ alert('Login first'); return; }
+  const amt = parseInt(el('payAmount').value || '0',10);
+  if(!amt || amt<=0){ alert('Choose amount'); return; }
+  const users = loadUsers(); users[user].balance = (users[user].balance||0) + amt;
+  saveUsers(users);
+  document.getElementById('payBox').style.display='none';
+  el('btnIPaid').style.display='none';
+  renderAccountArea();
+  log(`Payment confirmed (simulated): +${amt} PKR to ${user}`);
+});
+
+// spin logic
+function weightedPick(){
+  // create cumulative
+  const arr = [];
+  prizeTable.forEach(p => {
+    // multiply weights by 10 to avoid decimal issues
+    const count = Math.round(p.weight * 10);
+    for(let i=0;i<count;i++) arr.push(p);
+  });
+  const idx = Math.floor(Math.random()*arr.length);
+  return arr[idx];
+}
+
+function getSpinsUsedWithin24h(user){
+  const data = getSpinData(user);
+  const now = Date.now();
+  if(now - data.ts > 24*3600*1000){ // reset
+    data.ts = now; data.count = 0;
+    setSpinData(user,data);
+  }
+  return data.count;
+}
+
+function incrementSpinCount(user){
+  const data = getSpinData(user);
+  const now = Date.now();
+  if(now - data.ts > 24*3600*1000){ data.ts = now; data.count = 0; }
+  data.count = (data.count||0) + 1;
+  setSpinData(user,data);
+  return data.count;
+}
+
+// wheel UI build
+function buildWheel(){
+  const wheel = el('wheel');
+  wheel.innerHTML = '<div class="needle"></div>'; // reset
+  // calculate angle per slice
+  const totalWeight = prizeTable.reduce((s,p)=>s+p.weight,0);
+  let start = 0;
+  prizeTable.forEach((p,i)=>{
+    const angle = (p.weight/totalWeight)*360;
+    const slice = document.createElement('div');
+    slice.className = 'slice';
+    slice.style.transform = `rotate(${start}deg)`;
+    slice.style.zIndex = 5;
+    const inner = document.createElement('div');
+    inner.className = 'inner';
+    inner.style.width = '200%';
+    inner.style.height = '200%';
+    inner.style.background = i%2===0 ? '#e14a3c' : '#ffb27f';
+    inner.style.color = '#091018';
+    inner.style.fontSize = 'clamp(12px,2.2vw,16px)';
+    inner.textContent = p.label;
+    inner.style.transform = `rotate(${angle/2}deg) translateY(-18%)`;
+    slice.appendChild(inner);
+    slice.querySelector('.inner').style.paddingRight = '22px';
+    // set slice rotation (transform-origin handles shape)
+    slice.style.clipPath = 'polygon(0 0, 100% 0, 100% 100%, 0 100%)';
+    slice.style.height = '50%';
+    // rotate the slice's inner semicircle to create wedge: set transform-origin
+    slice.style.transformOrigin = '0% 100%';
+    slice.style.transform = `rotate(${start}deg)`;
+    // rotate inner wedge to span angle
+    inner.style.transform = `rotate(${angle/2}deg)`;
+    // apply arc by setting border radius and overflow hidden — this is a simple approx
+    wheel.appendChild(slice);
+    // advance
+    start += angle;
+  });
+}
+buildWheel();
+
+// animate spin then decide result
+let spinning = false;
+el('spinBtn').addEventListener('click', async ()=>{
+  if(spinning) return;
+  const user = getSession(); if(!user){ alert('Please login/create account first'); return; }
+  const users = loadUsers(); const u = users[user];
+  if(!u){ alert('user not found'); return; }
+
+  // check spins used in 24h
+  const used = getSpinsUsedWithin24h(user);
+  if(used >= MAX_SPINS_24H){ alert('Max spins for 24 hours reached'); return; }
+
+  // determine if using free spin
+  let usingFree = false;
+  if(u.freeSpin){ usingFree = true; } else {
+    if(u.balance < SPIN_COST){ alert('Insufficient balance. Add balance to spin.'); return; }
+    u.balance -= SPIN_COST;
+  }
+
+  // consume freeSpin flag if used
+  if(usingFree){ u.freeSpin = false; }
+
+  // update user & UI immediately
+  users[user] = u; saveUsers(users); renderAccountArea();
+  incrementSpinCount(user);
+  el('spinsUsed').textContent = getSpinsUsedWithin24h(user);
+
+  spinning = true;
+  log(`${user} started a spin${usingFree ? ' (free)' : ''}.`);
+
+  // spin animation
+  const wheelEl = el('wheel');
+  const rounds = Math.floor(Math.random()*3)+5; // 5-7 rounds
+  const picked = weightedPick();
+  // convert picked to target angle (random inside slice)
+  // find cumulative start angle of chosen prize
+  const totalWeight = prizeTable.reduce((s,p)=>s+p.weight,0);
+  let cur=0, startAngle=0;
+  for(const p of prizeTable){
+    const ang = (p.weight/totalWeight)*360;
+    if(p === picked) { startAngle = cur; break; }
+    cur += ang;
+  }
+  const pickedSliceAngle = (picked.weight/totalWeight)*360;
+  // pick a random angle inside the slice
+  const randomInside = (Math.random()*pickedSliceAngle);
+  const finalAngle = rounds*360 + (360 - (startAngle + randomInside)) + 90; // +90 to align needle top
+
+  wheelEl.style.transition = 'transform 4s cubic-bezier(.2,.8,.2,1)';
+  wheelEl.style.transform = `rotate(${finalAngle}deg)`;
+  // wait animation end
+  await new Promise(r=>setTimeout(r,4100));
+  // reset transform smoothly for next spin (set to remainder)
+  wheelEl.style.transition = 'none';
+  const normalized = finalAngle % 360;
+  wheelEl.style.transform = `rotate(${normalized}deg)`;
+
+  // evaluate result
+  if(picked.key === 'TRY'){
+    log('Result: Try Again (no prize).');
+    el('statusText').textContent = 'Try Again — no prize.';
+  } else if(picked.value === 0){
+    log('Result: 0 — no prize.');
+    el('statusText').textContent = '0 — no prize.';
+  } else {
+    // win amount
+    users[user].balance = (users[user].balance||0) + picked.value;
+    saveUsers(users);
+    renderAccountArea();
+    log(`Congratulations! You won ${picked.value} PKR.`);
+    el('statusText').textContent = `You won ${picked.value} PKR!`;
+  }
+
+  spinning = false;
+});
+
+// rules / history
+el('btnRules').addEventListener('click', ()=> {
+  alert('Rules:\\n• Each spin costs 10 PKR (unless you have a free spin).\\n• Max 10 spins per 24 hours.\\n• Signup gives 1 free spin.\\n• Winnings are credited to your balance (simulated).');
+});
+el('btnHistory').addEventListener('click', ()=>{
+  const h = el('log').innerText;
+  alert('Activity log (most recent first)\\n\\n' + h);
+});
+
+// on load restore session if exist
+renderAccountArea();
+</script>
+</body>
+</html>
