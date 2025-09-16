@@ -6,26 +6,54 @@
   <title>One-Wheely</title>
   <style>
     body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
       margin: 0;
       background: linear-gradient(135deg, #1d976c, #93f9b9);
       font-family: Arial, sans-serif;
+      text-align: center;
+      color: white;
     }
 
-    h1 {
-      color: white;
-      margin-bottom: 20px;
-      font-size: 2.2rem;
+    header {
+      background: #0a3d2e;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h2 {
+      margin: 0;
+    }
+
+    header button {
+      margin-left: 10px;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #gameWrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
     }
 
     canvas {
       background: #fff;
       border-radius: 50%;
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+
+    #pointer {
+      width: 0;
+      height: 0;
+      border-left: 25px solid transparent;
+      border-right: 25px solid transparent;
+      border-bottom: 40px solid red;
+      margin-top: -20px;
     }
 
     #spinBtn {
@@ -44,18 +72,74 @@
     #spinBtn:hover {
       background: #e60000;
     }
+
+    /* Popup */
+    #popup {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      justify-content: center;
+      align-items: center;
+    }
+
+    #popupContent {
+      background: white;
+      color: black;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    #popup button {
+      margin-top: 15px;
+      padding: 8px 15px;
+      border: none;
+      background: #0a3d2e;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <h1>🎡 One-Wheely 🎡</h1>
-  <canvas id="wheel" width="500" height="500"></canvas>
-  <button id="spinBtn">SPIN</button>
+  <header>
+    <h2>🎡 One-Wheely 🎡</h2>
+    <div>
+      <span id="userInfo">Guest | Balance: 0 PKR</span>
+      <button onclick="signup()">Signup</button>
+      <button onclick="login()">Login</button>
+      <button onclick="addBalance()">Add Balance</button>
+      <button onclick="withdraw()">Withdraw</button>
+    </div>
+  </header>
+
+  <div id="gameWrapper">
+    <div id="pointer"></div>
+    <canvas id="wheel" width="500" height="500"></canvas>
+    <button id="spinBtn">SPIN (-10 PKR)</button>
+  </div>
+
+  <!-- Popup -->
+  <div id="popup">
+    <div id="popupContent">
+      <p id="prizeText"></p>
+      <button onclick="closePopup()">OK</button>
+    </div>
+  </div>
 
   <script>
     const canvas = document.getElementById("wheel");
     const ctx = canvas.getContext("2d");
     const spinBtn = document.getElementById("spinBtn");
+    const userInfo = document.getElementById("userInfo");
 
+    let currentUser = null;
+    let balance = 0;
+
+    // Slices
     const slices = [
       { label: "1000 PKR", color: "#ff4d4d" },
       { label: "500 PKR", color: "#ff944d" },
@@ -90,11 +174,17 @@
         ctx.restore();
       });
     }
-
     drawWheel();
 
     spinBtn.addEventListener("click", () => {
-      let spinAngle = Math.random() * 360 + 360 * 5; // 5 full spins
+      if (balance < 10) {
+        alert("Not enough balance! Please add money.");
+        return;
+      }
+      balance -= 10;
+      updateUserInfo();
+
+      let spinAngle = Math.random() * 360 + 360 * 5;
       let spinTime = 0;
       let spinTimeTotal = 3000;
 
@@ -103,7 +193,11 @@
         if (spinTime >= spinTimeTotal) {
           const degrees = (spinAngle % 360);
           const index = Math.floor((360 - degrees) / (360 / slices.length)) % slices.length;
-          alert("Result: " + slices[index].label);
+          showPrize(slices[index].label);
+          if (slices[index].label !== "Try Again" && slices[index].label !== "0") {
+            balance += parseInt(slices[index].label);
+            updateUserInfo();
+          }
           return;
         }
         const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
@@ -119,6 +213,71 @@
       }
       rotateWheel();
     });
+
+    // Popup show
+    function showPrize(prize) {
+      document.getElementById("prizeText").textContent = "🎁 You got: " + prize;
+      document.getElementById("popup").style.display = "flex";
+    }
+    function closePopup() {
+      document.getElementById("popup").style.display = "none";
+    }
+
+    // Account System (demo with localStorage)
+    function signup() {
+      const username = prompt("Enter username:");
+      const accountType = prompt("JazzCash or EasyPaisa?");
+      const accNumber = prompt("Enter account number:");
+      const password = prompt("Enter password:");
+      const confirm = prompt("Confirm password:");
+      if (password !== confirm) { alert("Passwords don't match!"); return; }
+      localStorage.setItem(username, JSON.stringify({password, accountType, accNumber, balance: 0}));
+      alert("Signup successful!");
+    }
+
+    function login() {
+      const username = prompt("Username:");
+      const password = prompt("Password:");
+      const user = JSON.parse(localStorage.getItem(username));
+      if (user && user.password === password) {
+        currentUser = username;
+        balance = user.balance;
+        updateUserInfo();
+        alert("Login successful!");
+      } else {
+        alert("Invalid login!");
+      }
+    }
+
+    function updateUserInfo() {
+      if (currentUser) {
+        userInfo.textContent = `${currentUser} | Balance: ${balance} PKR`;
+        let user = JSON.parse(localStorage.getItem(currentUser));
+        user.balance = balance;
+        localStorage.setItem(currentUser, JSON.stringify(user));
+      } else {
+        userInfo.textContent = `Guest | Balance: ${balance} PKR`;
+      }
+    }
+
+    function addBalance() {
+      alert("Send money to:\nJazzCash: 0300-1234567\nEasyPaisa: 0301-7654321\n(Show QR codes here)");
+      let amount = parseInt(prompt("Enter amount you sent:"));
+      if (!isNaN(amount)) {
+        balance += amount;
+        updateUserInfo();
+        alert("Balance added manually!");
+      }
+    }
+
+    function withdraw() {
+      if (balance <= 0) { alert("No balance to withdraw!"); return; }
+      let amount = parseInt(prompt("Enter amount to withdraw:"));
+      if (amount > balance) { alert("Not enough balance!"); return; }
+      balance -= amount;
+      updateUserInfo();
+      alert("Withdraw request submitted!");
+    }
   </script>
 </body>
 </html>
