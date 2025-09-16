@@ -47,14 +47,17 @@
       box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
     }
 
-    #pointer {
-      width: 100;
-      height: 100;
-      border-left: 25px solid transparent;
-      border-right: 25px solid transparent;
+     #pointer {
+      position: relative;
+      top: -20px;              /* wheel ke bilkul upar layega */
+      width: 0;
+      height: 0;
+      margin: 0 auto;          /* center me align */
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
       border-bottom: 40px solid red;
-      margin-top: -20px;
     }
+
 
     #spinBtn {
       margin-top: 20px;
