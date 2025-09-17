@@ -125,3 +125,61 @@ function withdraw() {
   updateUserInfo();
   alert("Withdraw request submitted!");
 }
+
+// Multi-spin button
+const multiSpinBtn = document.getElementById("multiSpinBtn");
+
+multiSpinBtn.addEventListener("click", async () => {
+  if (balance < 50) {
+    alert("Not enough balance for 5 spins!");
+    return;
+  }
+
+  balance -= 50;
+  updateUserInfo();
+
+  let rewards = [];
+
+  for (let i = 0; i < 5; i++) {
+    let prize = await spinWheelOnce(); // ek helper function banayenge
+    rewards.push(prize);
+  }
+
+  showPrize("You got:\n" + rewards.join(", "));
+});
+
+
+// Helper function: ek spin complete hone ka promise return karega
+function spinWheelOnce() {
+  return new Promise((resolve) => {
+    let spinAngle = Math.random() * 360 + 360 * 5;
+    let spinTime = 0;
+    let spinTimeTotal = 3000;
+
+    function rotateWheel() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        const degrees = (spinAngle % 360);
+        let sectorSize = 360 / prizes.length;
+        let index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
+        let prize = prizes[index];
+
+        if (prize !== "💀" && prize !== "00") {
+          balance += parseInt(prize);
+          updateUserInfo();
+        }
+
+        resolve(prize);
+        return;
+      }
+
+      const easeOut = (t, b, c, d) =>
+        c * ((t = t / d - 1) * t * t + 1) + b;
+      let angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
+
+      drawWheel(angleCurrent * Math.PI / 180);
+      requestAnimationFrame(rotateWheel);
+    }
+    rotateWheel();
+  });
+}
