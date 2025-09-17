@@ -36,8 +36,11 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <!-- Firebase Config + Auth functions -->
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="auth.js"></script>
 
+  <!-- Auth buttons handler -->
   <script type="module">
     import { signup, login, logout } from "./auth.js";
 
@@ -58,8 +61,9 @@
     });
   </script>
 
-  <script type="module" src="firebase-config.js"></script>
-  <script type="module" src="auth.js"></script>
+  <!-- Game logic last -->
+  <script src="script.js"></script>
+
 
 
 </body>
