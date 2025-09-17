@@ -13,9 +13,9 @@
       <span id="userInfo">Balance: 0 PKR</span>
       <button id="signupBtn">Signup</button>
       <button id="loginBtn">Login</button>
-      <button id="logoutBtn">Logout</button>
-      <button onclick="addBalance()">Add Balance</button>
-      <button onclick="withdraw()">Withdraw</button>
+      <button id="logoutBtn" style="display:none;">Logout</button>
+      <button id="addBalanceBtn" style="display:none;" onclick="addBalance()">Add Balance</button>
+      <button id="withdrawBtn" style="display:none;" onclick="withdraw()">Withdraw</button>
     </div>
   </header>
 
@@ -41,40 +41,62 @@
 
   <!-- Auth buttons handler -->
   <script type="module">
-    import { signup, login, logout } from "./auth.js";
+    import { signup, login, logout, auth } from "./auth.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-    // Ensure DOM is loaded before attaching listeners
-    window.addEventListener("DOMContentLoaded", () => {
-      const signupBtn = document.getElementById("signupBtn");
-      const loginBtn = document.getElementById("loginBtn");
-      const logoutBtn = document.getElementById("logoutBtn");
+    // buttons
+    const signupBtn = document.getElementById("signupBtn");
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const addBalanceBtn = document.getElementById("addBalanceBtn");
+    const withdrawBtn = document.getElementById("withdrawBtn");
 
-      signupBtn.addEventListener("click", () => {
-        const email = prompt("Enter email:");
-        const password = prompt("Enter password (min 6 chars):");
+    // signup
+    signupBtn.addEventListener("click", () => {
+      const email = prompt("Enter email:");
+      const password = prompt("Enter password (min 6 chars):");
 
-        if (!email || !password) {
-          alert("Email and password are required!");
-          return;
-        }
+      if (!email || !password) {
+        alert("Email and password are required!");
+        return;
+      }
+      if (password.length < 6) {
+        alert("Password must be at least 6 characters long!");
+        return;
+      }
 
-        if (password.length < 6) {
-          alert("Password must be at least 6 characters long!");
-          return;
-        }
+      signup(email, password);
+    });
 
-        signup(email, password);
-      });
+    // login
+    loginBtn.addEventListener("click", () => {
+      const email = prompt("Enter email:");
+      const password = prompt("Enter password:");
+      login(email, password);
+    });
 
-      loginBtn.addEventListener("click", () => {
-        const email = prompt("Enter email:");
-        const password = prompt("Enter password:");
-        login(email, password);
-      });
+    // logout
+    logoutBtn.addEventListener("click", () => {
+      logout();
+    });
 
-      logoutBtn.addEventListener("click", () => {
-        logout();
-      });
+    // auth state change
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // logged in
+        signupBtn.style.display = "none";
+        loginBtn.style.display = "none";
+        logoutBtn.style.display = "inline-block";
+        addBalanceBtn.style.display = "inline-block";
+        withdrawBtn.style.display = "inline-block";
+      } else {
+        // logged out
+        signupBtn.style.display = "inline-block";
+        loginBtn.style.display = "inline-block";
+        logoutBtn.style.display = "none";
+        addBalanceBtn.style.display = "none";
+        withdrawBtn.style.display = "none";
+      }
     });
   </script>
 
