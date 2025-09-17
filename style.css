@@ -1,5 +1,78 @@
-/* 🔹 Auth Popup (Signup/Login form) */
-.auth-popup {
+body {
+  margin: 0;
+  background: #143ad3; /* Old theme color */
+  font-family: Arial, sans-serif;
+  text-align: center;
+  color: white;
+}
+
+header {
+  background: #0c255c; /* Old theme header */
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+header h2 { margin: 0; }
+
+header button {
+  margin-left: 10px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  background: #884dff; /* Purple button */
+  color: white;
+  transition: background 0.3s;
+}
+
+header button:hover {
+  background: #0c255c;
+}
+
+#gameWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  position: relative;
+}
+
+canvas {
+  border-radius: 50%;
+}
+
+.button-group {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+#spinBtn,
+#multiSpinBtn {
+  padding: 12px 25px;
+  font-size: 18px;
+  border: none;
+  border-radius: 10px;
+  background: #884dff; /* Old theme button */
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+  min-width: 180px;
+  text-align: center;
+}
+
+#spinBtn:hover,
+#multiSpinBtn:hover {
+  background: #0c255c; /* Old hover */
+}
+
+/* Popup */
+#popup {
   display: none;
   position: fixed;
   top: 0; left: 0;
@@ -7,40 +80,32 @@
   background: rgba(0,0,0,0.6);
   justify-content: center;
   align-items: center;
+  z-index: 999;
 }
 
-.auth-popup-content {
-  background: #0c255c; /* 👈 same header color */
-  padding: 20px;
+#popupContent {
+  background: #0c255c; /* Old theme dark blue */
+  color: #ffffff;
+  padding: 20px 25px;
   border-radius: 10px;
+  font-size: 20px;
+  font-weight: bold;
   text-align: center;
-  width: 300px;
+  max-width: 350px;
+  box-shadow: 0px 4px 12px rgba(0,0,0,0.3);
 }
 
-.auth-popup-content h3 {
-  margin-top: 0;
-  color: white;
-}
-
-.auth-popup-content input {
-  width: 90%;
-  padding: 10px;
-  margin: 8px 0;
-  border-radius: 6px;
-  border: none;
-}
-
-.auth-popup-content button {
-  margin-top: 10px;
+#popup button {
+  margin-top: 15px;
   padding: 8px 15px;
   border: none;
-  background: #884dff;
+  background: #884dff; /* Old theme purple */
   color: white;
-  font-weight: bold;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background 0.3s;
 }
 
-.auth-popup-content button:hover {
-  background: #23015c;
+#popup button:hover {
+  background: #143ad3; /* Old body color hover */
 }
