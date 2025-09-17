@@ -1,45 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
-
-
-
-  
-  // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAE6IddcAPdAUe4J_UywUSBQ2d060yDmPU",
-  authDomain: "one-wheely.firebaseapp.com",
-  projectId: "one-wheely",
-  storageBucket: "one-wheely.firebasestorage.app",
-  messagingSenderId: "232397481240",
-  appId: "1:232397481240:web:9737c7e1c1ff1c2721ea6d",
-  measurementId: "G-626PW7BMSZ"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
-
-
-
-
-
-
-
-
-
-
-
-
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>One-Wheely</title>
@@ -142,6 +103,34 @@ const analytics = getAnalytics(app);
       cursor: pointer;
     }
   </style>
+  
+  <script type="module">
+  // Firebase SDKs from CDN
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyAE6IddcAPdAUe4J_UywUSBQ2d060yDmPU",
+    authDomain: "one-wheely.firebaseapp.com",
+    projectId: "one-wheely",
+    storageBucket: "one-wheely.firebasestorage.app",
+    messagingSenderId: "232397481240",
+    appId: "1:232397481240:web:9737c7e1c1ff1c2721ea6d",
+    measurementId: "G-626PW7BMSZ"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  console.log("Firebase Connected ✔️");
+</script>
+
 </head>
 <body>
   <header>
