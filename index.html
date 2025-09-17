@@ -46,9 +46,21 @@
 
     document.getElementById("signupBtn").addEventListener("click", () => {
       const email = prompt("Enter email:");
-      const password = prompt("Enter password:");
+      const password = prompt("Enter password (min 6 chars):");
+
+      if (!email || !password) {
+        alert("Email and password are required!");
+        return;
+      }
+
+      if (password.length < 6) {
+        alert("Password must be at least 6 characters long!");
+        return;
+      }
+
       signup(email, password);
     });
+
 
     document.getElementById("loginBtn").addEventListener("click", () => {
       const email = prompt("Enter email:");
