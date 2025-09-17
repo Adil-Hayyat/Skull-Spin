@@ -21,9 +21,7 @@
       align-items: center;
     }
 
-    header h2 {
-      margin: 0;
-    }
+    header h2 { margin: 0; }
 
     header button {
       margin-left: 10px;
@@ -39,28 +37,24 @@
       flex-direction: column;
       align-items: center;
       margin-top: 20px;
+      position: relative;
     }
 
     canvas {
-      background: #c21616;
       border-radius: 50%;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
     }
 
     #pointer {
       position: absolute;
-      top: 35.7%;                  /* wheel ke center ke samne */
-      right: 550px;              /* wheel ke bilkul side me */
-      transform: translateY(-50%) rotate(180deg);  /* right ki taraf point kare */
+      top: -30px;
+      left: 50%;
+      transform: translateX(-50%);
       width: 0;
       height: 0;
-      border-top: 20px solid transparent;
-      border-bottom: 20px solid transparent;
-      border-left: 40px solid #090490;
+      border-left: 25px solid transparent;
+      border-right: 25px solid transparent;
+      border-bottom: 40px solid red;
     }
-
-
-
 
     #spinBtn {
       margin-top: 20px;
@@ -75,9 +69,7 @@
       transition: background 0.3s;
     }
 
-    #spinBtn:hover {
-      background: #0c255c;
-    }
+    #spinBtn:hover { background: #0c255c; }
 
     /* Popup */
     #popup {
@@ -114,7 +106,7 @@
   <header>
     <h2>🎡 One-Wheely 🎡</h2>
     <div>
-      <span id="userInfo">Guest | Balance: 0 PKR</span>
+      <span id="userInfo">Balance: 0 PKR</span>
       <button onclick="signup()">Signup</button>
       <button onclick="login()">Login</button>
       <button onclick="addBalance()">Add Balance</button>
@@ -144,44 +136,24 @@
 
     let currentUser = null;
     let balance = 0;
+    let wheelImg = new Image();
+    wheelImg.src = "wheel.png";
 
-    // Slices
-    const slices = [
-      { label: "1000 PKR", color: "#ff4d4d" },
-      { label: "500 PKR", color: "#ff944d" },
-      { label: "100 PKR", color: "#ffd11a" },
-      { label: "50 PKR", color: "#99e600" },
-      { label: "20 PKR", color: "#33cc33" },
-      { label: "10 PKR", color: "#1affa3" },
-      { label: "5 PKR", color: "#3399ff" },
-      { label: "1 PKR", color: "#9966ff" },
-      { label: "0", color: "#cc33ff" },
-      { label: "Try Again", color: "#808080" }
-    ];
+    const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
 
-    const arc = (2 * Math.PI) / slices.length;
-
-    function drawWheel() {
-      slices.forEach((slice, i) => {
-        const startAngle = i * arc;
-        ctx.beginPath();
-        ctx.fillStyle = slice.color;
-        ctx.moveTo(250, 250);
-        ctx.arc(250, 250, 250, startAngle, startAngle + arc);
-        ctx.fill();
-        ctx.save();
-
-        ctx.translate(250, 250);
-        ctx.rotate(startAngle + arc / 2);
-        ctx.textAlign = "right";
-        ctx.fillStyle = "#fff";
-        ctx.font = "18px Arial";
-        ctx.fillText(slice.label, 230, 10);
-        ctx.restore();
-      });
+    // Wheel draw with image
+    function drawWheel(rotation) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(rotation);
+      ctx.drawImage(wheelImg, -250, -250, 500, 500);
+      ctx.restore();
     }
-    drawWheel();
 
+    wheelImg.onload = () => { drawWheel(0); };
+
+    // Spin
     spinBtn.addEventListener("click", () => {
       if (balance < 10) {
         alert("Not enough balance! Please add money.");
@@ -198,23 +170,24 @@
         spinTime += 30;
         if (spinTime >= spinTimeTotal) {
           const degrees = (spinAngle % 360);
-          const index = Math.floor((360 - degrees) / (360 / slices.length)) % slices.length;
-          showPrize(slices[index].label);
-          if (slices[index].label !== "Try Again" && slices[index].label !== "0") {
-            balance += parseInt(slices[index].label);
+          let sectorSize = 360 / prizes.length;
+          let index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
+          let prize = prizes[index];
+
+          showPrize(prize);
+
+          if (prize !== "💀" && prize !== "00") {
+            balance += parseInt(prize);
             updateUserInfo();
           }
           return;
         }
-        const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
+
+        const easeOut = (t, b, c, d) =>
+          c * ((t = t / d - 1) * t * t + 1) + b;
         let angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-        ctx.clearRect(0, 0, 500, 500);
-        ctx.save();
-        ctx.translate(250, 250);
-        ctx.rotate(angleCurrent * Math.PI / 180);
-        ctx.translate(-250, -250);
-        drawWheel();
-        ctx.restore();
+
+        drawWheel(angleCurrent * Math.PI / 180);
         requestAnimationFrame(rotateWheel);
       }
       rotateWheel();
