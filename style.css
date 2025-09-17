@@ -52,6 +52,39 @@ canvas {
 
 #spinBtn:hover { background: #0c255c; }
 
+.button-group {
+  display: flex;
+  gap: 15px;
+  margin-top: 20px;
+  justify-content: center;
+}
+
+#spinBtn,
+#multiSpinBtn {
+  padding: 12px 25px;
+  font-size: 18px;
+  border: none;
+  border-radius: 10px;
+  background: #884dff;
+  color: white;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+#spinBtn:hover,
+#multiSpinBtn:hover {
+  background: #0c255c;
+}
+
+
+
+
+
+
+
+
+
 /* Popup */
 #popup {
   display: none;
