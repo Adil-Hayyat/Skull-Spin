@@ -1,37 +1,46 @@
-// auth.js
 import { auth } from "./firebase-config.js";
-import {
+import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+  signOut 
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 // Signup
-export async function signup(email, password) {
+document.getElementById("signupBtn").addEventListener("click", async () => {
+  const email = document.getElementById("signupEmail").value;
+  const password = document.getElementById("signupPassword").value;
+
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    alert("Signup successful: " + userCredential.user.email);
+    alert("Signup successful! 🎉");
+    console.log(userCredential.user);
   } catch (error) {
-    alert("Signup failed: " + error.message);
+    alert("Error: " + error.message);
+    console.error(error);
   }
-}
+});
 
 // Login
-export async function login(email, password) {
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
+
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    alert("Login successful: " + userCredential.user.email);
+    alert("Login successful! ✅");
+    console.log(userCredential.user);
   } catch (error) {
-    alert("Login failed: " + error.message);
+    alert("Error: " + error.message);
+    console.error(error);
   }
-}
+});
 
 // Logout
-export async function logout() {
+document.getElementById("logoutBtn").addEventListener("click", async () => {
   try {
     await signOut(auth);
-    alert("Logged out successfully");
+    alert("Logged out!");
   } catch (error) {
-    alert("Logout failed: " + error.message);
+    console.error(error);
   }
-}
+});
