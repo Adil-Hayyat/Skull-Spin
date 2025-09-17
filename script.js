@@ -8,7 +8,7 @@ let balance = 0;
 let wheelImg = new Image();
 wheelImg.src = "wheel.png";
 
-const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
+const prizes = ["10", "💀", "00", "💀", "1000", "💀", "100", "💀"];
 
 // Wheel draw with image
 function drawWheel(rotation) {
