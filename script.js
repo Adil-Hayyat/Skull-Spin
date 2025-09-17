@@ -1,181 +1,73 @@
-const canvas = document.getElementById("wheel");
-const ctx = canvas.getContext("2d");
+import { auth, db } from "./firebase-config.js";
+import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+let balance = 0;
+const userInfo = document.getElementById("userInfo");
 const spinBtn = document.getElementById("spinBtn");
 const multiSpinBtn = document.getElementById("multiSpinBtn");
-const userInfo = document.getElementById("userInfo");
 
-let currentUser = null;
-let balance = 0;
-let wheelImg = new Image();
-wheelImg.src = "wheel.png";
+async function loadBalance() {
+  const user = auth.currentUser;
+  if (!user) return;
 
-const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
+  const userRef = doc(db, "users", user.uid);
+  const snap = await getDoc(userRef);
 
-// Wheel draw with image
-function drawWheel(rotation) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(rotation);
-  ctx.drawImage(wheelImg, -250, -250, 500, 500);
-  ctx.restore();
+  if (snap.exists()) {
+    balance = snap.data().balance;
+  } else {
+    balance = 0;
+  }
+
+  updateBalanceUI();
 }
 
-wheelImg.onload = () => { drawWheel(0); };
-
-// Popup
-function showPrize(prize) {
-  document.getElementById("prizeText").textContent = prize;
-  document.getElementById("popup").style.display = "flex";
-}
-function closePopup() {
-  document.getElementById("popup").style.display = "none";
+function updateBalanceUI() {
+  userInfo.textContent = `Balance: ${balance} PKR`;
 }
 
-// Single Spin
-spinBtn.addEventListener("click", () => {
+async function updateBalanceInDB(newBalance) {
+  const user = auth.currentUser;
+  if (!user) return;
+
+  const userRef = doc(db, "users", user.uid);
+  await updateDoc(userRef, { balance: newBalance });
+}
+
+spinBtn.addEventListener("click", async () => {
   if (balance < 10) {
-    alert("Not enough balance! Please add money.");
+    alert("Not enough balance!");
     return;
   }
+
   balance -= 10;
-  updateUserInfo();
+  updateBalanceUI();
+  await updateBalanceInDB(balance);
 
-  let spinAngle = Math.random() * 360 + 360 * 5;
-  let spinTime = 0;
-  let spinTimeTotal = 3000;
-
-  function rotateWheel() {
-    spinTime += 30;
-    if (spinTime >= spinTimeTotal) {
-      const degrees = (spinAngle % 360);
-      let sectorSize = 360 / prizes.length;
-      let index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
-      let prize = prizes[index];
-
-      if (prize !== "💀" && prize !== "00") {
-        balance += parseInt(prize);
-        updateUserInfo();
-      }
-
-      showPrize("🎁 You got: " + prize);
-      return;
-    }
-
-    const easeOut = (t, b, c, d) =>
-      c * ((t = t / d - 1) * t * t + 1) + b;
-    let angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-
-    drawWheel(angleCurrent * Math.PI / 180);
-    requestAnimationFrame(rotateWheel);
-  }
-  rotateWheel();
+  // yahan apka wheel spin ka logic chalega
+  console.log("Spin ho gaya!");
 });
 
-// Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) {
-    alert("Not enough balance for 5 spins!");
+    alert("Not enough balance!");
     return;
   }
 
   balance -= 50;
-  updateUserInfo();
+  updateBalanceUI();
+  await updateBalanceInDB(balance);
 
-  let rewards = [];
-
-  for (let i = 0; i < 5; i++) {
-    let prize = await spinWheelOnce();
-    rewards.push(prize);
-  }
-
-  showPrize("🎁 You got:\n" + rewards.join(", "));
+  // multi spin ka logic
+  console.log("5 Spin ho gaya!");
 });
 
-// Helper function
-function spinWheelOnce() {
-  return new Promise((resolve) => {
-    let spinAngle = Math.random() * 360 + 360 * 5;
-    let spinTime = 0;
-    let spinTimeTotal = 1000; // faster for multi-spin
-
-    function rotateWheel() {
-      spinTime += 30;
-      if (spinTime >= spinTimeTotal) {
-        const degrees = (spinAngle % 360);
-        let sectorSize = 360 / prizes.length;
-        let index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
-        let prize = prizes[index];
-
-        if (prize !== "💀" && prize !== "00") {
-          balance += parseInt(prize);
-          updateUserInfo();
-        }
-
-        resolve(prize);
-        return;
-      }
-
-      const easeOut = (t, b, c, d) =>
-        c * ((t = t / d - 1) * t * t + 1) + b;
-      let angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-
-      drawWheel(angleCurrent * Math.PI / 180);
-      requestAnimationFrame(rotateWheel);
-    }
-    rotateWheel();
-  });
-}
-
-// Account System (localStorage demo)
-function signup() {
-  const username = prompt("Enter username:");
-  const password = prompt("Enter password:");
-  const confirm = prompt("Confirm password:");
-  if (password !== confirm) { alert("Passwords don't match!"); return; }
-  localStorage.setItem(username, JSON.stringify({password, balance: 0}));
-  alert("Signup successful!");
-}
-
-function login() {
-  const username = prompt("Username:");
-  const password = prompt("Password:");
-  const user = JSON.parse(localStorage.getItem(username));
-  if (user && user.password === password) {
-    currentUser = username;
-    balance = user.balance;
-    updateUserInfo();
-    alert("Login successful!");
+// jab user login kare → balance load ho
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    loadBalance();
   } else {
-    alert("Invalid login!");
+    balance = 0;
+    updateBalanceUI();
   }
-}
-
-function updateUserInfo() {
-  if (currentUser) {
-    userInfo.textContent = `${currentUser} | Balance: ${balance} PKR`;
-    let user = JSON.parse(localStorage.getItem(currentUser));
-    user.balance = balance;
-    localStorage.setItem(currentUser, JSON.stringify(user));
-  } else {
-    userInfo.textContent = `Guest | Balance: ${balance} PKR`;
-  }
-}
-
-function addBalance() {
-  let amount = parseInt(prompt("Enter amount to add:"));
-  if (!isNaN(amount)) {
-    balance += amount;
-    updateUserInfo();
-    alert("Balance added!");
-  }
-}
-
-function withdraw() {
-  if (balance <= 0) { alert("No balance to withdraw!"); return; }
-  let amount = parseInt(prompt("Enter amount to withdraw:"));
-  if (amount > balance) { alert("Not enough balance!"); return; }
-  balance -= amount;
-  updateUserInfo();
-  alert("Withdraw request submitted!");
-}
+});
