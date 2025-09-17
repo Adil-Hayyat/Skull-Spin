@@ -1,10 +1,9 @@
-// Firebase SDKs from CDN
+// firebase-config.js
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-analytics.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Your Firebase config
+// Aapka Firebase config (jo aapne share kiya tha)
 const firebaseConfig = {
   apiKey: "AIzaSyAE6IddcAPdAUe4J_UywUSBQ2d060yDmPU",
   authDomain: "one-wheely.firebaseapp.com",
@@ -17,8 +16,8 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
-console.log("Firebase Connected ✔️");
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+console.log("🔥 Firebase Connected Successfully");
