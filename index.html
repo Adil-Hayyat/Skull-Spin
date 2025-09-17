@@ -19,7 +19,6 @@
     </div>
   </header>
 
-
   <div id="gameWrapper">
     <canvas id="wheel" width="500" height="500"></canvas>
     <div class="button-group">
@@ -44,39 +43,42 @@
   <script type="module">
     import { signup, login, logout } from "./auth.js";
 
-    document.getElementById("signupBtn").addEventListener("click", () => {
-      const email = prompt("Enter email:");
-      const password = prompt("Enter password (min 6 chars):");
+    // Ensure DOM is loaded before attaching listeners
+    window.addEventListener("DOMContentLoaded", () => {
+      const signupBtn = document.getElementById("signupBtn");
+      const loginBtn = document.getElementById("loginBtn");
+      const logoutBtn = document.getElementById("logoutBtn");
 
-      if (!email || !password) {
-        alert("Email and password are required!");
-        return;
-      }
+      signupBtn.addEventListener("click", () => {
+        const email = prompt("Enter email:");
+        const password = prompt("Enter password (min 6 chars):");
 
-      if (password.length < 6) {
-        alert("Password must be at least 6 characters long!");
-        return;
-      }
+        if (!email || !password) {
+          alert("Email and password are required!");
+          return;
+        }
 
-      signup(email, password);
-    });
+        if (password.length < 6) {
+          alert("Password must be at least 6 characters long!");
+          return;
+        }
 
+        signup(email, password);
+      });
 
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      const email = prompt("Enter email:");
-      const password = prompt("Enter password:");
-      login(email, password);
-    });
+      loginBtn.addEventListener("click", () => {
+        const email = prompt("Enter email:");
+        const password = prompt("Enter password:");
+        login(email, password);
+      });
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      logout();
+      logoutBtn.addEventListener("click", () => {
+        logout();
+      });
     });
   </script>
 
   <!-- Game logic last -->
   <script src="script.js"></script>
-
-
-
 </body>
 </html>
