@@ -37,21 +37,6 @@ canvas {
   border-radius: 50%;
 }
 
-#spinBtn {
-  margin-top: 20px;
-  padding: 12px 25px;
-  font-size: 18px;
-  border: none;
-  border-radius: 10px;
-  background: #884dff;
-  color: white;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background 0.3s;
-}
-
-#spinBtn:hover { background: #0c255c; }
-
 .button-group {
   display: flex;
   gap: 15px;
@@ -76,14 +61,6 @@ canvas {
 #multiSpinBtn:hover {
   background: #0c255c;
 }
-
-
-
-
-
-
-
-
 
 /* Popup */
 #popup {
