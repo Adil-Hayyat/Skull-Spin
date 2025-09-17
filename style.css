@@ -55,12 +55,15 @@ canvas {
   cursor: pointer;
   font-weight: bold;
   transition: background 0.3s;
+  min-width: 180px; /* 👈 yeh line add karo */
+  text-align: center;
 }
 
 #spinBtn:hover,
 #multiSpinBtn:hover {
   background: #0c255c;
 }
+
 
 /* Popup */
 #popup {
