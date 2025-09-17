@@ -35,5 +35,27 @@
   </div>
 
   <script src="script.js"></script>
+
+  <script type="module">
+    import { signup, login, logout } from "./auth.js";
+
+    document.getElementById("signupBtn").addEventListener("click", () => {
+      const email = prompt("Enter email:");
+      const password = prompt("Enter password:");
+      signup(email, password);
+    });
+
+    document.getElementById("loginBtn").addEventListener("click", () => {
+      const email = prompt("Enter email:");
+      const password = prompt("Enter password:");
+      login(email, password);
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      logout();
+    });
+  </script>
+
+
 </body>
 </html>
