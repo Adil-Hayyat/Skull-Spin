@@ -23,9 +23,15 @@ const RECEIVER = {
  * @param {number} amount - Amount user entered (>=200 PKR)
  */
 export async function createTransaction(accountHolder, accountNumber, amount) {
+  const statusMsg = document.getElementById("statusMessage");
+
   try {
     const user = auth.currentUser;
     if (!user) throw new Error("No authenticated user found!");
+
+    if (!accountHolder || !accountNumber || !amount || amount < 200) {
+      throw new Error("⚠️ Please fill all fields (Min 200 PKR).");
+    }
 
     // Generate unique reference
     const reference = `REF-${user.uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random()
@@ -46,9 +52,13 @@ export async function createTransaction(accountHolder, accountNumber, amount) {
       createdAt: serverTimestamp()
     });
 
+    // ✅ Show success message
+    showStatus("✅ Process complete. Payment will add within 30 min.", "green");
     return { success: true, reference };
   } catch (err) {
     console.error("❌ Error creating transaction:", err);
+    // ❌ Show error message
+    showStatus("❌ " + err.message, "red");
     return { success: false, error: err.message };
   }
 }
@@ -74,4 +84,23 @@ export async function getMyTransactions() {
     console.error("❌ Error fetching transactions:", err);
     return [];
   }
+}
+
+/**
+ * Show temporary status message (success or error)
+ * @param {string} msg - Message text
+ * @param {string} color - "green" or "red"
+ */
+function showStatus(msg, color) {
+  const statusMsg = document.getElementById("statusMessage");
+  if (!statusMsg) return;
+
+  statusMsg.textContent = msg;
+  statusMsg.style.color = color;
+  statusMsg.style.display = "block";
+
+  // Hide after 5 seconds
+  setTimeout(() => {
+    statusMsg.style.display = "none";
+  }, 5000);
 }
