@@ -13,11 +13,9 @@ import {
   setDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Receiver static details
+// Receiver static method only (account number ab user input hoga)
 const RECEIVER = {
-  method: "Easypaisa",
-  accountHolder: "Adil Hayyat",
-  accountNumber: "03127196480"
+  method: "Easypaisa"
 };
 
 /**
@@ -41,14 +39,14 @@ export async function createTransaction(accountHolder, accountNumber, amount) {
       .slice(2, 6)
       .toUpperCase()}`;
 
-    // Add transaction to Firestore
+    // ✅ Add transaction to Firestore
     await addDoc(collection(db, "transactions"), {
       uid: user.uid,
-      accountHolder,
-      accountNumber,
+      accountHolder,             // user input
+      accountNumber,             // user input
       amount,
-      method: RECEIVER.method,
-      accountReceiver: RECEIVER.accountNumber,
+      method: RECEIVER.method,   // fixed: Easypaisa
+      accountReceiver: accountNumber, // 🔥 ab user ka diya hua number save hoga
       reference,
       status: "pending",
       createdAt: serverTimestamp()
@@ -64,7 +62,6 @@ export async function createTransaction(accountHolder, accountNumber, amount) {
         balance: currentBalance + amount
       });
     } else {
-      // Agar user ka document pehli dafa ban raha hai
       await setDoc(userRef, { balance: amount }, { merge: true });
     }
 
