@@ -39,7 +39,7 @@
     </div>
   </div>
 
-  <!-- Popup -->
+  <!-- Game Result Popup -->
   <div id="popup">
     <div id="popupContent">
       <p id="prizeText"></p>
@@ -47,9 +47,11 @@
     </div>
   </div>
 
-  <!-- Payment Instructions -->
-  <div id="paymentInstructions" style="display:none; margin:20px; padding:15px; border:1px solid #ccc; background:#f9f9f9; border-radius:8px;">
-    <!-- payments.js will inject details here -->
+  <!-- Payment Instructions Popup -->
+  <div id="paymentInstructions" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border:1px solid #ccc; border-radius:10px; padding:20px; max-width:350px; z-index:1000; box-shadow:0 4px 12px rgba(0,0,0,0.2);">
+    <h3>💳 Add Balance Instructions</h3>
+    <div id="paymentDetails"></div>
+    <button id="closePaymentPopup" style="margin-top:15px; padding:8px 12px; background:#e14a3c; color:#fff; border:none; border-radius:6px; cursor:pointer;">Close</button>
   </div>
 
   <!-- Firebase + Auth -->
@@ -66,13 +68,37 @@
   <script type="module">
     import { createPendingDeposit } from './payments.js';
 
-    document.getElementById('addBalanceBtn').addEventListener('click', async () => {
+    const addBalanceBtn = document.getElementById('addBalanceBtn');
+    const paymentPopup = document.getElementById('paymentInstructions');
+    const paymentDetails = document.getElementById('paymentDetails');
+    const closePaymentPopup = document.getElementById('closePaymentPopup');
+
+    addBalanceBtn.addEventListener('click', async () => {
       const amount = parseInt(prompt("Enter amount to add (min 200 PKR):"), 10);
       if (!amount || amount < 200) {
         alert("⚠️ Minimum 200 PKR required.");
         return;
       }
+
+      // Step 1: Create deposit entry in DB
       await createPendingDeposit(amount);
+
+      // Step 2: Show payment instructions
+      paymentDetails.innerHTML = `
+        <p><b>Step 1:</b> Open your <b>Easypaisa</b> / <b>JazzCash</b> app.</p>
+        <p><b>Step 2:</b> Go to <b>Send Money</b>.</p>
+        <p><b>Step 3:</b> Enter this number: <b>0312-XXXXXXX</b></p>
+        <p><b>Step 4:</b> Enter Amount: <b>${amount} PKR</b></p>
+        <p><b>Step 5:</b> After payment, take screenshot & send it to our WhatsApp: <b>03XX-XXXXXXX</b></p>
+        <hr>
+        <p style="color:green;">✅ After verification, your balance will be updated automatically.</p>
+      `;
+      paymentPopup.style.display = "block";
+    });
+
+    // Close popup
+    closePaymentPopup.addEventListener('click', () => {
+      paymentPopup.style.display = "none";
     });
   </script>
 </body>
