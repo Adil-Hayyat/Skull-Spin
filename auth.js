@@ -17,11 +17,16 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Sirf ek dafa balance set karo (overwrite na ho)
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      balance: 0
-    });
+    // Sirf naya user ka document banega
+    const userRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (!docSnap.exists()) {
+      await setDoc(userRef, {
+        email: user.email,
+        balance: 0
+      });
+    }
 
     alert("Signup successful ✅");
     window.location.href = "index.html"; // redirect to game
@@ -44,7 +49,7 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   }
 });
 
-// ✅ Logout
+// ✅ Logout (used inside index.html)
 export async function logout() {
   await signOut(auth);
   window.location.href = "auth.html";
