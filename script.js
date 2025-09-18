@@ -1,9 +1,7 @@
-// script.js
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import { doc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
-import { createPendingDeposit } from "./payments.js";
 
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
@@ -33,7 +31,6 @@ function drawWheel(rotation) {
 }
 wheelImg.onload = () => drawWheel(0);
 
-// 🎁 Popup
 function showPrize(prize) {
   document.getElementById("prizeText").textContent = prize;
   document.getElementById("popup").style.display = "flex";
@@ -43,14 +40,12 @@ function closePopup() {
 }
 window.closePopup = closePopup;
 
-// 👤 UI update
 function updateUserInfo() {
   if (currentUser) {
     userInfo.textContent = `${currentUser.email}  ||  PKR | ${balance} |`;
   }
 }
 
-// 💾 Balance save
 async function saveBalance() {
   if (currentUser) {
     await updateDoc(doc(db, "users", currentUser.uid), { balance });
@@ -90,7 +85,6 @@ spinBtn.addEventListener("click", () => {
   rotateWheel();
 });
 
-// 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) { alert("⚠️ Not enough balance!"); return; }
   balance -= 50; updateUserInfo(); saveBalance();
@@ -132,14 +126,7 @@ function spinWheelOnce() {
   });
 }
 
-// 💰 Deposit (frontend → payments.js)
-addBalanceBtn.addEventListener("click", async () => {
-  const amount = parseInt(prompt("Enter amount to deposit (min 200 PKR):"), 10);
-  if (!amount) return;
-  await createPendingDeposit(amount);
-});
-
-// 💸 Withdraw (request, not instant)
+// 💸 Withdraw
 withdrawBtn.addEventListener("click", async () => {
   const amount = parseInt(prompt("Enter amount to withdraw (min 1000 PKR):"), 10);
   if (!amount || amount < 1000) { alert("⚠️ Minimum withdraw is 1000 PKR."); return; }
@@ -168,7 +155,6 @@ logoutBtn.addEventListener("click", logout);
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    // 🔥 Realtime listener → balance update hoti rahegi
     onSnapshot(doc(db, "users", user.uid), (docSnap) => {
       if (docSnap.exists()) {
         balance = docSnap.data().balance || 0;
