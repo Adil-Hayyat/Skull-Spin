@@ -4,76 +4,69 @@ import {
   addDoc,
   collection,
   serverTimestamp,
-  doc,
-  updateDoc,
-  getDoc,
-  setDoc
+  getDocs,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
+// Receiver static details
 const RECEIVER = {
   method: "Easypaisa",
   accountName: "Adil Hayyat",
-  accountNumber: "0312-7196480"
+  accountNumber: "03127196480"
 };
 
-export async function createPendingDeposit(amount) {
-  if (!auth.currentUser) {
-    alert("⚠️ Please login first.");
-    return null;
-  }
-
-  if (!amount || isNaN(amount) || amount < 200) {
-    alert("⚠️ Minimum deposit amount is 200 PKR.");
-    return null;
-  }
-
-  const uid = auth.currentUser.uid;
-  const reference = `REF-${uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 6)
-    .toUpperCase()}`;
-
-  const tx = {
-    uid,
-    amount: Number(amount),
-    reference,
-    method: RECEIVER.method,
-    accountReceiver: RECEIVER.accountNumber,
-    accountHolder: RECEIVER.accountName,
-    status: "pending",
-    createdAt: serverTimestamp()
-  };
-
+/**
+ * Add a new transaction to Firestore
+ * @param {string} accHolder - Account Holder Name (user input)
+ * @param {string} accNumber - Account Number (user input)
+ * @param {number} amount - Amount user entered (>=200 PKR)
+ */
+export async function createTransaction(accHolder, accNumber, amount) {
   try {
-    // ✅ Transaction add karo
-    await addDoc(collection(db, "transactions"), tx);
+    const user = auth.currentUser;
+    if (!user) throw new Error("No authenticated user found!");
 
-    // ✅ Balance update karo (test mode)
-    const userRef = doc(db, "users", uid);
-    const snap = await getDoc(userRef);
+    const reference = `REF-${user.uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
-    if (snap.exists()) {
-      const currentBalance = snap.data().balance || 0;
-      await updateDoc(userRef, { balance: currentBalance + Number(amount) });
-    } else {
-      await setDoc(userRef, { balance: Number(amount) });
-    }
+    await addDoc(collection(db, "transactions"), {
+      uid: user.uid,
+      accHolder,
+      accNumber,
+      amount,
+      method: RECEIVER.method,
+      accountReceiver: RECEIVER.accountNumber,
+      reference,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
 
-    // ✅ Reference clipboard me copy
-    try {
-      await navigator.clipboard.writeText(reference);
-      console.log("Reference copied:", reference);
-    } catch (e) {
-      console.warn("Reference not auto-copied:", reference);
-    }
-
-    // 🔹 return reference so index.html can show it in popup
-    return { reference };
+    return { success: true, reference };
   } catch (err) {
-    console.error("❌ createPendingDeposit error:", err);
-    alert("Failed to create deposit request. Try again.");
-    return null;
+    console.error("❌ Error creating transaction:", err);
+    return { success: false, error: err.message };
   }
 }
 
-window.createPendingDeposit = createPendingDeposit;
+/**
+ * Get all transactions of current user
+ */
+export async function getMyTransactions() {
+  try {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No authenticated user found!");
+
+    const q = query(collection(db, "transactions"), where("uid", "==", user.uid));
+    const snapshot = await getDocs(q);
+
+    const data = [];
+    snapshot.forEach((doc) => {
+      data.push({ id: doc.id, ...doc.data() });
+    });
+
+    return data;
+  } catch (err) {
+    console.error("❌ Error fetching transactions:", err);
+    return [];
+  }
+}
