@@ -31,7 +31,7 @@ function drawWheel(rotation) {
 wheelImg.onload = () => drawWheel(0);
 
 function showPrize(prize) {
-  document.getElementById("prizeText").textContent = prize;
+  document.getElementById("prizeText").innerHTML = prize; // ✅ innerHTML so we can use <br>
   document.getElementById("popup").style.display = "flex";
 }
 function closePopup() {
@@ -53,10 +53,10 @@ async function saveBalance() {
 }
 
 // Spin logic
-spinBtn.addEventListener("click", () => {
+spinBtn.addEventListener("click", async () => {
   if (balance < 10) { alert("Not enough balance!"); return; }
   balance -= 10;
-  updateUserInfo(); saveBalance();
+  updateUserInfo(); await saveBalance();
 
   let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
@@ -88,14 +88,14 @@ spinBtn.addEventListener("click", () => {
 // Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) { alert("Not enough balance!"); return; }
-  balance -= 50; updateUserInfo(); saveBalance();
+  balance -= 50; updateUserInfo(); await saveBalance();
 
   let rewards = [];
   for (let i = 0; i < 5; i++) {
     let prize = await spinWheelOnce();
     rewards.push(prize);
   }
-  showPrize("🎁 You got:\n" + rewards.join(", "));
+  showPrize("🎁 You got:<br>" + rewards.join(", "));
 });
 
 function spinWheelOnce() {
@@ -128,14 +128,14 @@ function spinWheelOnce() {
 }
 
 // Balance management
-addBalanceBtn.addEventListener("click", () => {
+addBalanceBtn.addEventListener("click", async () => {
   let amount = parseInt(prompt("Enter amount:"));
-  if (!isNaN(amount)) { balance += amount; updateUserInfo(); saveBalance(); }
+  if (!isNaN(amount)) { balance += amount; updateUserInfo(); await saveBalance(); }
 });
-withdrawBtn.addEventListener("click", () => {
+withdrawBtn.addEventListener("click", async () => {
   let amount = parseInt(prompt("Withdraw amount:"));
   if (amount > balance) { alert("Not enough balance!"); return; }
-  balance -= amount; updateUserInfo(); saveBalance();
+  balance -= amount; updateUserInfo(); await saveBalance();
   alert("Withdraw request submitted!");
 });
 
@@ -148,7 +148,10 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     const docSnap = await getDoc(doc(db, "users", user.uid));
     if (docSnap.exists()) {
-      balance = docSnap.data().balance; // ✅ Firestore ka balance use karo
+      balance = docSnap.data().balance ?? 0; // ✅ agar balance field missing hai to 0
+      updateUserInfo();
+    } else {
+      balance = 0;
       updateUserInfo();
     }
   }
