@@ -17,16 +17,16 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Naya account banate hi balance 0 set karo (sirf first time)
+    // Sirf ek dafa balance set karo (overwrite na ho)
     await setDoc(doc(db, "users", user.uid), {
       email: user.email,
       balance: 0
-    }, { merge: true }); // 👈 merge: true → dobara overwrite nahi karega
+    });
 
     alert("Signup successful ✅");
     window.location.href = "index.html"; // redirect to game
   } catch (error) {
-    alert("Signup failed ❌\n" + error.message);
+    alert(error.message);
   }
 });
 
@@ -36,22 +36,11 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   const password = document.getElementById("password").value;
 
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // Login ke baad user ka data check karo
-    const docRef = doc(db, "users", user.uid);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      // Agar user ka record missing hai to create karo
-      await setDoc(docRef, { email: user.email, balance: 0 }, { merge: true });
-    }
-
+    await signInWithEmailAndPassword(auth, email, password);
     alert("Login successful ✅");
-    window.location.href = "index.html"; // redirect to game
+    window.location.href = "index.html";
   } catch (error) {
-    alert("Login failed ❌\n" + error.message);
+    alert(error.message);
   }
 });
 
@@ -64,7 +53,6 @@ export async function logout() {
 // ✅ Auth check
 onAuthStateChanged(auth, (user) => {
   if (!user && window.location.pathname.endsWith("index.html")) {
-    // agar login nahi hai aur index.html par hai to redirect
     window.location.href = "auth.html";
   }
 });
