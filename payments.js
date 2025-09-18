@@ -1,50 +1,30 @@
 // payments.js
-// Frontend helper: create pending deposit transaction with unique reference
-
 import { auth, db } from "./firebase-config.js";
-import { 
-  addDoc, 
-  collection, 
-  serverTimestamp, 
-  doc, 
-  updateDoc, 
-  increment 
-} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { addDoc, collection, serverTimestamp, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Receiver account details (Easypaisa)
 const RECEIVER = {
   method: "Easypaisa",
   accountName: "Adil Hayyat",
   accountNumber: "0312-7196480"
 };
 
-/**
- * createPendingDeposit(amount)
- * - Creates a pending transaction in Firestore
- * - Returns { id, reference }
- */
 export async function createPendingDeposit(amount) {
-  // ✅ Check if user logged in
   if (!auth.currentUser) {
     alert("⚠️ Please login first.");
     return null;
   }
 
-  // ✅ Validate amount
   if (!amount || isNaN(amount) || amount < 200) {
     alert("⚠️ Minimum deposit amount is 200 PKR.");
     return null;
   }
 
   const uid = auth.currentUser.uid;
-
-  // ✅ Generate unique reference
   const reference = `REF-${uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 6)
     .toUpperCase()}`;
 
-  // ✅ Transaction data
   const tx = {
     uid,
     amount: Number(amount),
@@ -52,46 +32,48 @@ export async function createPendingDeposit(amount) {
     method: RECEIVER.method,
     accountReceiver: RECEIVER.accountNumber,
     accountHolder: RECEIVER.accountName,
-    status: "pending", // later updated to "confirmed"
+    status: "pending",
     createdAt: serverTimestamp()
   };
 
   try {
-    // ✅ Save in Firestore → "transactions" collection
-    const docRef = await addDoc(collection(db, "transactions"), tx);
+    await addDoc(collection(db, "transactions"), tx);
 
-    // 🔹 TEST MODE ONLY: Update balance immediately
-    // ⚠️ REMOVE THIS in production (only admin/webhook should confirm payment)
+    // ✅ Balance Update (Test Mode)
     const userRef = doc(db, "users", uid);
-    await updateDoc(userRef, { balance: increment(Number(amount)) });
+    const snap = await getDoc(userRef);
 
-    // ✅ Message for user
+    if (snap.exists()) {
+      const currentBalance = snap.data().balance || 0;
+      await updateDoc(userRef, { balance: currentBalance + Number(amount) });
+    } else {
+      // agar user ka record nahi bana abhi tak
+      await setDoc(userRef, { balance: Number(amount) });
+    }
+
+    // ✅ Show instructions in page
     const msg =
-      `💸 Send *${amount} PKR* to ${RECEIVER.method}:<br><br>` +
-      `📱 <b>Account:</b> ${RECEIVER.accountNumber}<br>` +
-      `👤 <b>Name:</b> ${RECEIVER.accountName}<br><br>` +
-      `📝 <b>IMPORTANT:</b> In payment note/reference write:<br>` +
-      `<span style="color:red; font-weight:bold;">${reference}</span><br><br>` +
+      `💸 Send *${amount} PKR* to ${RECEIVER.method}:\n\n` +
+      `📱 Account: ${RECEIVER.accountNumber}\n` +
+      `👤 Name: ${RECEIVER.accountName}\n\n` +
+      `📝 IMPORTANT: In payment note/reference write:\n\n` +
+      `➡️ ${reference}\n\n` +
       `✅ After sending, your balance will be updated once verified.`;
 
-    // ✅ Show in HTML (if container exists)
     const container = document.getElementById("paymentInstructions");
     if (container) {
       container.style.display = "block";
-      container.innerHTML = msg;
-    } else {
-      alert(msg.replace(/<br>/g, "\n"));
+      container.innerHTML = `<pre>${msg}</pre>`;
     }
 
-    // ✅ Try to copy reference for user
     try {
       await navigator.clipboard.writeText(reference);
-      console.log("Reference copied:", reference);
+      alert("Reference copied ✅\n\nCheck instructions below.");
     } catch (e) {
-      console.warn("Clipboard copy failed:", e);
+      alert("Check instructions below 👇 (Reference not auto-copied)");
     }
 
-    return { id: docRef.id, reference };
+    return { reference };
   } catch (err) {
     console.error("❌ createPendingDeposit error:", err);
     alert("Failed to create deposit request. Try again.");
@@ -99,5 +81,4 @@ export async function createPendingDeposit(amount) {
   }
 }
 
-// (Optional) Attach to window so you can call directly from browser console
 window.createPendingDeposit = createPendingDeposit;
