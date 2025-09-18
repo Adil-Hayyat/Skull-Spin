@@ -1,9 +1,10 @@
 // payments.js
-// frontend helper: create pending deposit transaction with unique reference
+// Frontend helper: create pending deposit transaction with unique reference
+
 import { auth, db } from "./firebase-config.js";
 import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-// Your displayed receiving account (Easypaisa)
+// Receiver account details (Easypaisa)
 const RECEIVER = {
   method: "Easypaisa",
   accountName: "Adil Hayyat",
@@ -12,58 +13,70 @@ const RECEIVER = {
 
 /**
  * createPendingDeposit(amount)
- * - creates a pending transaction doc in Firestore
- * - returns { id, reference }
+ * - Creates a pending transaction in Firestore
+ * - Returns { id, reference }
  */
 export async function createPendingDeposit(amount) {
+  // ✅ Check if user logged in
   if (!auth.currentUser) {
-    alert("Please login first.");
+    alert("⚠️ Please login first.");
     return null;
   }
+
+  // ✅ Validate amount
   if (!amount || isNaN(amount) || amount < 200) {
-    alert("Minimum deposit amount is 200 PKR.");
+    alert("⚠️ Minimum deposit amount is 200 PKR.");
     return null;
   }
 
   const uid = auth.currentUser.uid;
-  const reference = `REF-${uid.slice(0,6)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
 
+  // ✅ Generate unique reference
+  const reference = `REF-${uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 6)
+    .toUpperCase()}`;
+
+  // ✅ Transaction data
   const tx = {
     uid,
     amount: Number(amount),
     reference,
     method: RECEIVER.method,
     accountReceiver: RECEIVER.accountNumber,
-    status: "pending",
+    accountHolder: RECEIVER.accountName,
+    status: "pending", // later updated to "confirmed"
     createdAt: serverTimestamp()
   };
 
   try {
+    // ✅ Save in Firestore → "transactions" collection
     const docRef = await addDoc(collection(db, "transactions"), tx);
 
-    // show user instructions
-    const msg = `Pay ${amount} PKR to ${RECEIVER.method} account:\n\n` +
-                `Account: ${RECEIVER.accountNumber}\n` +
-                `Account holder: ${RECEIVER.accountName}\n\n` +
-                `IMPORTANT: In payment note/reference write EXACTLY:\n\n` +
-                `${reference}\n\n` +
-                `After sending payment, you will be credited automatically when we receive the notification.`;
+    // ✅ Message for user
+    const msg =
+      `💸 Send *${amount} PKR* to ${RECEIVER.method}:\n\n` +
+      `📱 Account: ${RECEIVER.accountNumber}\n` +
+      `👤 Name: ${RECEIVER.accountName}\n\n` +
+      `📝 IMPORTANT: In payment note/reference write:\n\n` +
+      `➡️ ${reference}\n\n` +
+      `✅ After sending, your balance will be updated once verified.`;
 
-    // copy reference to clipboard for convenience
+    // ✅ Try to copy reference for user
     try {
       await navigator.clipboard.writeText(reference);
-      alert(msg + "\n\nReference copied to clipboard ✅");
+      alert(msg + "\n\n(Reference copied to clipboard ✅)");
     } catch (e) {
-      alert(msg + "\n\n(Reference not copied automatically; please copy it manually.)");
+      alert(msg + "\n\n⚠️ Reference not copied automatically, please copy it manually.");
     }
 
     return { id: docRef.id, reference };
   } catch (err) {
-    console.error("createPendingDeposit error:", err);
-    alert("Failed to create pending transaction. Try again.");
+    console.error("❌ createPendingDeposit error:", err);
+    alert("Failed to create deposit request. Try again.");
     return null;
   }
 }
 
-// attach to global for quick use from index buttons if you prefer:
+// (Optional) Attach to window so you can call directly from browser console
 window.createPendingDeposit = createPendingDeposit;
