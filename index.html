@@ -37,6 +37,7 @@
     </div>
   </div>
 
+  <!-- Game Result Popup -->
   <div id="popup">
     <div id="popupContent">
       <p id="prizeText"></p>
@@ -44,9 +45,26 @@
     </div>
   </div>
 
+  <!-- Add Balance / Payment Popup -->
   <div id="paymentInstructions" style="display:none; text-align:center; max-width:500px; width:90%; padding:30px; border-radius:15px;">
     <h3>💳 Payment Instructions</h3>
-    <div id="paymentDetails">
+
+    <!-- User input fields -->
+    <div style="margin-bottom:15px; text-align:left;">
+      <label>Acc. Holder Name:</label><br>
+      <input type="text" id="inputAccHolder" placeholder="Enter your name" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
+
+      <label>Acc. Number:</label><br>
+      <input type="text" id="inputAccNumber" placeholder="Enter your number" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
+
+      <label>Amount (min 200 PKR):</label><br>
+      <input type="number" id="inputAmount" placeholder="200" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;" min="200">
+    </div>
+
+    <hr>
+
+    <!-- Existing instructions -->
+    <div id="paymentDetails" style="text-align:left;">
       <p><b>User UID:</b> <span id="userID">...</span></p>
       <p style="color:red; font-weight:bold; margin-top:5px;">
         Note: When sending payment via Easypaisa or JazzCash, make sure to enter this User UID in the message/remarks field. Payment will not be verified without it.
@@ -57,7 +75,8 @@
       <p>Acc. Number: <b>03127196480</b></p>
       <p style="color:green;">✅ After payment verification, your balance will be updated automatically.</p>
     </div>
-    <button id="closePaymentPopup">Close</button>
+
+    <button id="closePaymentPopup">Done</button>
   </div>
 
   <script type="module" src="firebase-config.js"></script>
@@ -66,22 +85,67 @@
   <script type="module" src="script.js"></script>
 
   <script type="module">
-    import { auth } from "./firebase-config.js";
+    import { auth, db } from "./firebase-config.js";
+    import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const addBalanceBtn = document.getElementById('addBalanceBtn');
     const paymentPopup = document.getElementById('paymentInstructions');
     const closePaymentPopup = document.getElementById('closePaymentPopup');
     const userIDSpan = document.getElementById('userID');
 
+    const inputAccHolder = document.getElementById('inputAccHolder');
+    const inputAccNumber = document.getElementById('inputAccNumber');
+    const inputAmount = document.getElementById('inputAmount');
+
     addBalanceBtn.addEventListener('click', async () => {
       const user = auth.currentUser;
       if (!user) return;
+
       userIDSpan.textContent = user.uid;
       paymentPopup.style.display = "block";
     });
 
-    closePaymentPopup.addEventListener('click', () => {
-      paymentPopup.style.display = "none";
+    closePaymentPopup.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const accHolder = inputAccHolder.value.trim();
+      const accNumber = inputAccNumber.value.trim();
+      const amount = parseInt(inputAmount.value);
+
+      if (!accHolder || !accNumber || isNaN(amount) || amount < 200) {
+        alert("⚠️ Please fill all fields correctly. Minimum amount is 200 PKR.");
+        return;
+      }
+
+      // Generate unique reference
+      const reference = `REF-${user.uid.slice(0,6)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
+
+      // Add transaction to Firestore
+      try {
+        await addDoc(collection(db, "transactions"), {
+          uid: user.uid,
+          amount: amount,
+          reference,
+          method: "Easypaisa",
+          accountReceiver: "03127196480",
+          accountHolder: accHolder,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+
+        alert("✅ Transaction added successfully!");
+        paymentPopup.style.display = "none";
+
+        // Clear input fields
+        inputAccHolder.value = "";
+        inputAccNumber.value = "";
+        inputAmount.value = "";
+
+      } catch (err) {
+        console.error("Transaction error:", err);
+        alert("❌ Failed to add transaction.");
+      }
     });
   </script>
 </body>
