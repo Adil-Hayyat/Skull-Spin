@@ -12,27 +12,32 @@ import {
 // Receiver static details
 const RECEIVER = {
   method: "Easypaisa",
-  accountName: "Adil Hayyat",
+  accountHolder: "Adil Hayyat",
   accountNumber: "03127196480"
 };
 
 /**
  * Add a new transaction to Firestore
- * @param {string} accHolder - Account Holder Name (user input)
- * @param {string} accNumber - Account Number (user input)
+ * @param {string} accountHolder - Account Holder Name (user input)
+ * @param {string} accountNumber - Account Number (user input)
  * @param {number} amount - Amount user entered (>=200 PKR)
  */
-export async function createTransaction(accHolder, accNumber, amount) {
+export async function createTransaction(accountHolder, accountNumber, amount) {
   try {
     const user = auth.currentUser;
     if (!user) throw new Error("No authenticated user found!");
 
-    const reference = `REF-${user.uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    // Generate unique reference
+    const reference = `REF-${user.uid.slice(0, 6)}-${Date.now().toString(36)}-${Math.random()
+      .toString(36)
+      .slice(2, 6)
+      .toUpperCase()}`;
 
+    // Add transaction to Firestore
     await addDoc(collection(db, "transactions"), {
       uid: user.uid,
-      accHolder,
-      accNumber,
+      accountHolder,
+      accountNumber,
       amount,
       method: RECEIVER.method,
       accountReceiver: RECEIVER.accountNumber,
@@ -49,7 +54,7 @@ export async function createTransaction(accHolder, accNumber, amount) {
 }
 
 /**
- * Get all transactions of current user
+ * Get all transactions of the current user
  */
 export async function getMyTransactions() {
   try {
