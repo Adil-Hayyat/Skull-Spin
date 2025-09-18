@@ -25,19 +25,18 @@ function drawWheel(rotation) {
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotation);
-  ctx.drawImage(wheelImg, -250, -250, 500, 500);
+  ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
 }
 wheelImg.onload = () => drawWheel(0);
 
 function showPrize(prize) {
-  document.getElementById("prizeText").innerHTML = prize; // ✅ innerHTML so we can use <br>
+  document.getElementById("prizeText").innerHTML = prize;
   document.getElementById("popup").style.display = "flex";
 }
-function closePopup() {
+window.closePopup = () => {
   document.getElementById("popup").style.display = "none";
-}
-window.closePopup = closePopup;
+};
 
 function updateUserInfo() {
   if (currentUser) {
@@ -45,25 +44,23 @@ function updateUserInfo() {
   }
 }
 
-// ✅ Balance Firestore me save karo
 async function saveBalance() {
   if (currentUser) {
     await updateDoc(doc(db, "users", currentUser.uid), { balance });
   }
 }
 
-// Spin logic
+// ✅ Spin logic
 spinBtn.addEventListener("click", async () => {
   if (balance < 10) { alert("Not enough balance!"); return; }
-  balance -= 10;
-  updateUserInfo(); await saveBalance();
+  balance -= 10; updateUserInfo(); await saveBalance();
 
-  let spinAngle = Math.random() * 360 + 360 * 5;
+  let spinAngle = Math.random() * 360 + 360 * 5; // kam az kam 5 rounds
   let spinTime = 0;
-  let spinTimeTotal = 3000;
+  let spinTimeTotal = 4000;
 
   function rotateWheel() {
-    spinTime += 30;
+    spinTime += 20;
     if (spinTime >= spinTimeTotal) {
       const degrees = spinAngle % 360;
       let sectorSize = 360 / prizes.length;
@@ -77,7 +74,7 @@ spinBtn.addEventListener("click", async () => {
       showPrize("🎁 You got: " + prize);
       return;
     }
-    let easeOut = (t, b, c, d) => c * ((t = t/d - 1) * t * t + 1) + b;
+    let easeOut = (t, b, c, d) => c * (1 - Math.pow(1 - t/d, 3)) + b;
     let angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
     drawWheel(angleCurrent * Math.PI / 180);
     requestAnimationFrame(rotateWheel);
@@ -85,7 +82,7 @@ spinBtn.addEventListener("click", async () => {
   rotateWheel();
 });
 
-// Multi-spin
+// ✅ Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) { alert("Not enough balance!"); return; }
   balance -= 50; updateUserInfo(); await saveBalance();
@@ -100,12 +97,12 @@ multiSpinBtn.addEventListener("click", async () => {
 
 function spinWheelOnce() {
   return new Promise((resolve) => {
-    let spinAngle = Math.random() * 360 + 360 * 5;
+    let spinAngle = Math.random() * 360 + 360 * 3;
     let spinTime = 0;
-    let spinTimeTotal = 1000;
+    let spinTimeTotal = 1200;
 
     function rotateWheel() {
-      spinTime += 30;
+      spinTime += 20;
       if (spinTime >= spinTimeTotal) {
         const degrees = spinAngle % 360;
         let sectorSize = 360 / prizes.length;
@@ -118,7 +115,7 @@ function spinWheelOnce() {
         resolve(prize);
         return;
       }
-      let easeOut = (t, b, c, d) => c * ((t = t/d - 1) * t * t + 1) + b;
+      let easeOut = (t, b, c, d) => c * (1 - Math.pow(1 - t/d, 3)) + b;
       let angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
       drawWheel(angleCurrent * Math.PI / 180);
       requestAnimationFrame(rotateWheel);
@@ -127,7 +124,7 @@ function spinWheelOnce() {
   });
 }
 
-// Balance management
+// ✅ Balance management
 addBalanceBtn.addEventListener("click", async () => {
   let amount = parseInt(prompt("Enter amount:"));
   if (!isNaN(amount)) { balance += amount; updateUserInfo(); await saveBalance(); }
@@ -139,7 +136,7 @@ withdrawBtn.addEventListener("click", async () => {
   alert("Withdraw request submitted!");
 });
 
-// Logout
+// ✅ Logout
 logoutBtn.addEventListener("click", logout);
 
 // ✅ Login ke baad Firestore se balance load karo
@@ -148,11 +145,10 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     const docSnap = await getDoc(doc(db, "users", user.uid));
     if (docSnap.exists()) {
-      balance = docSnap.data().balance ?? 0; // ✅ agar balance field missing hai to 0
-      updateUserInfo();
+      balance = docSnap.data().balance ?? 0;
     } else {
       balance = 0;
-      updateUserInfo();
     }
+    updateUserInfo();
   }
 });
