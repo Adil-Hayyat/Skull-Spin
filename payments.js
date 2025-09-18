@@ -1,4 +1,3 @@
-// payments.js
 import { auth, db } from "./firebase-config.js";
 import {
   addDoc,
@@ -13,7 +12,7 @@ import {
 const RECEIVER = {
   method: "Easypaisa",
   accountName: "Adil Hayyat",
-  accountNumber: "0312-7196480"
+  accountNumber: "03127196480"
 };
 
 export async function createPendingDeposit(amount) {
@@ -45,10 +44,7 @@ export async function createPendingDeposit(amount) {
   };
 
   try {
-    // ✅ Transaction add karo
     await addDoc(collection(db, "transactions"), tx);
-
-    // ✅ Balance update karo (test mode)
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
 
@@ -59,15 +55,9 @@ export async function createPendingDeposit(amount) {
       await setDoc(userRef, { balance: Number(amount) });
     }
 
-    // ✅ Reference clipboard me copy
-    try {
-      await navigator.clipboard.writeText(reference);
-      console.log("Reference copied:", reference);
-    } catch (e) {
-      console.warn("Reference not auto-copied:", reference);
-    }
+    try { await navigator.clipboard.writeText(reference); } 
+    catch (e) { console.warn("Reference not auto-copied:", reference); }
 
-    // 🔹 return reference so index.html can show it in popup
     return { reference };
   } catch (err) {
     console.error("❌ createPendingDeposit error:", err);
