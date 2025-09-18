@@ -2,24 +2,23 @@ import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import { doc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
-import { createPendingDeposit } from "./payments.js";
 
+// 🎡 Canvas setup
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
 const spinBtn = document.getElementById("spinBtn");
 const multiSpinBtn = document.getElementById("multiSpinBtn");
 const userInfo = document.getElementById("userInfo");
 
-const addBalanceBtn = document.getElementById("addBalanceBtn");
 const withdrawBtn = document.getElementById("withdrawBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
 let balance = 0;
 let currentUser = null;
 
-// 🎡 Wheel setup
+// 🎡 Wheel image (fixed path)
 let wheelImg = new Image();
-wheelImg.src = "wheel.png";
+wheelImg.src = "./wheel.png";
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
 
 function drawWheel(rotation) {
@@ -49,7 +48,7 @@ function updateUserInfo() {
   }
 }
 
-// 💾 Balance save with check for new user document
+// 💾 Save balance
 async function saveBalance() {
   if (!currentUser) return;
   const userRef = doc(db, "users", currentUser.uid);
@@ -63,7 +62,7 @@ async function saveBalance() {
 
 // 🎡 Spin button
 spinBtn.addEventListener("click", () => {
-  if (balance < 10) { alert("⚠️ Not enough balance!"); return; }
+  if (balance < 10) { showStatus("⚠️ Not enough balance!", "error"); return; }
   balance -= 10;
   updateUserInfo(); saveBalance();
 
@@ -96,7 +95,7 @@ spinBtn.addEventListener("click", () => {
 
 // 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
-  if (balance < 50) { alert("⚠️ Not enough balance!"); return; }
+  if (balance < 50) { showStatus("⚠️ Not enough balance!", "error"); return; }
   balance -= 50; updateUserInfo(); saveBalance();
 
   const rewards = [];
@@ -136,18 +135,11 @@ function spinWheelOnce() {
   });
 }
 
-// 💰 Deposit (frontend → payments.js)
-addBalanceBtn.addEventListener("click", async () => {
-  const amount = parseInt(prompt("Enter amount to deposit (min 200 PKR):"), 10);
-  if (!amount) return;
-  await createPendingDeposit(amount);
-});
-
 // 💸 Withdraw
 withdrawBtn.addEventListener("click", async () => {
   const amount = parseInt(prompt("Enter amount to withdraw (min 1000 PKR):"), 10);
-  if (!amount || amount < 1000) { alert("⚠️ Minimum withdraw is 1000 PKR."); return; }
-  if (amount > balance) { alert("⚠️ Not enough balance!"); return; }
+  if (!amount || amount < 1000) { showStatus("⚠️ Minimum withdraw is 1000 PKR.", "error"); return; }
+  if (amount > balance) { showStatus("⚠️ Not enough balance!", "error"); return; }
 
   try {
     await addDoc(collection(db, "withdrawals"), {
@@ -158,10 +150,10 @@ withdrawBtn.addEventListener("click", async () => {
     });
     balance -= amount;
     updateUserInfo(); saveBalance();
-    alert("✅ Withdraw request submitted!");
+    showStatus("✅ Withdraw request submitted!", "success");
   } catch (err) {
     console.error("Withdraw error:", err);
-    alert("❌ Failed to submit withdraw request.");
+    showStatus("❌ Failed to submit withdraw request.", "error");
   }
 });
 
@@ -174,7 +166,6 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     const userRef = doc(db, "users", user.uid);
 
-    // Ensure document exists for new users
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
       await setDoc(userRef, { email: user.email, balance: 0 });
@@ -192,3 +183,30 @@ onAuthStateChanged(auth, async (user) => {
     });
   }
 });
+
+// ✅ Status message system (same as index.html)
+function showStatus(message, type) {
+  let statusBox = document.getElementById("statusMessage");
+  if (!statusBox) {
+    statusBox = document.createElement("div");
+    statusBox.id = "statusMessage";
+    statusBox.style.position = "fixed";
+    statusBox.style.bottom = "20px";
+    statusBox.style.left = "50%";
+    statusBox.style.transform = "translateX(-50%)";
+    statusBox.style.padding = "12px 20px";
+    statusBox.style.borderRadius = "8px";
+    statusBox.style.fontWeight = "bold";
+    statusBox.style.zIndex = "2000";
+    document.body.appendChild(statusBox);
+  }
+
+  statusBox.textContent = message;
+  statusBox.style.display = "block";
+  statusBox.style.background = type === "success" ? "#28a745" : "#dc3545";
+  statusBox.style.color = "#fff";
+
+  setTimeout(() => {
+    statusBox.style.display = "none";
+  }, 5000);
+}
