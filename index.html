@@ -6,7 +6,6 @@
   <title>One-Wheely | Game</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- Auth Check -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
@@ -50,6 +49,7 @@
   <div id="paymentInstructions" style="display:none;">
     <h3>💳 Payment Instructions</h3>
     <div id="paymentDetails">
+      <p><b>ID:</b> <span id="userID">...</span></p>
       <p><b>Payment Details:</b></p>
       <p>Easypaisa</p>
       <p>Acc. Holder Name: <b>Adil Hayyat</b></p>
@@ -59,23 +59,45 @@
     <button id="closePaymentPopup">Close</button>
   </div>
 
-  <!-- Firebase + Auth -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
-
-  <!-- Payment handler -->
   <script type="module" src="payments.js"></script>
-
-  <!-- Game logic -->
   <script type="module" src="script.js"></script>
 
-  <!-- Add Balance Popup Handler -->
   <script type="module">
+    import { auth, db } from "./firebase-config.js";
+    import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    function generateUniqueID(length = 10) {
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+      let id = "";
+      for (let i = 0; i < length; i++) {
+        id += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return id;
+    }
+
     const addBalanceBtn = document.getElementById('addBalanceBtn');
     const paymentPopup = document.getElementById('paymentInstructions');
     const closePaymentPopup = document.getElementById('closePaymentPopup');
+    const userIDSpan = document.getElementById('userID');
 
-    addBalanceBtn.addEventListener('click', () => {
+    addBalanceBtn.addEventListener('click', async () => {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const userRef = doc(db, "users", user.uid);
+      const snap = await getDoc(userRef);
+      let userID;
+
+      if (snap.exists() && snap.data().uniqueID) {
+        userID = snap.data().uniqueID;
+      } else {
+        userID = generateUniqueID();
+        await setDoc(userRef, { uniqueID: userID }, { merge: true });
+      }
+
+      userIDSpan.textContent = userID;
       paymentPopup.style.display = "block";
     });
 
