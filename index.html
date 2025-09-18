@@ -38,7 +38,6 @@
     </div>
   </div>
 
-  <!-- Game Result Popup -->
   <div id="popup">
     <div id="popupContent">
       <p id="prizeText"></p>
@@ -47,62 +46,22 @@
   </div>
 
   <!-- Payment Instructions Popup -->
-  <div id="paymentInstructions" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border:1px solid #ccc; border-radius:12px; padding:25px; max-width:400px; z-index:1000; box-shadow:0 4px 12px rgba(0,0,0,0.2); text-align:center;">
-    <h3>💳 Add Balance Instructions</h3>
-    <div id="paymentDetails"></div>
-    <input type="text" id="holderName" placeholder="Account Holder Name" style="width:90%; padding:8px; margin:5px 0;">
-    <input type="text" id="accountNumber" placeholder="Account Number" style="width:90%; padding:8px; margin:5px 0;">
-    <input type="number" id="depositAmount" placeholder="Amount (min 200 PKR)" style="width:90%; padding:8px; margin:5px 0;">
-    <p id="uidNote" style="color:red; font-size:14px; display:none;"></p>
-    <button id="confirmDeposit" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
-    <button id="closePaymentPopup" style="margin-top:10px; padding:10px 15px; background:#23015c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Close</button>
+  <div id="paymentInstructions" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border:1px solid #ccc; border-radius:12px; padding:25px; max-width:400px; z-index:1000; box-shadow:0 6px 18px rgba(0,0,0,0.3); text-align:center;">
+    <h3>💳 Add Balance</h3>
+    <div id="paymentForm">
+      <input type="text" id="accountHolderInput" placeholder="Account Holder Name" style="width:90%; margin:10px 0; padding:8px;">
+      <input type="text" id="accountNumberInput" placeholder="Account Number" style="width:90%; margin:10px 0; padding:8px;">
+      <input type="number" id="amountInput" placeholder="Amount (min 200 PKR)" style="width:90%; margin:10px 0; padding:8px;">
+      <button id="donePaymentBtn" style="margin-top:15px; padding:10px 18px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
+    </div>
+    <hr>
+    <p style="color:red; font-size:13px;">Note: While sending payment via Easypaisa/JazzCash, enter your UID in the message field, otherwise payment won't be credited.</p>
   </div>
 
   <!-- Firebase + Auth -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
-
-  <!-- Payment handler -->
   <script type="module" src="payments.js"></script>
-
-  <!-- Game logic -->
   <script type="module" src="script.js"></script>
-
-  <script type="module">
-    import { createPendingDeposit } from './payments.js';
-    const addBalanceBtn = document.getElementById('addBalanceBtn');
-    const paymentPopup = document.getElementById('paymentInstructions');
-    const closePaymentPopup = document.getElementById('closePaymentPopup');
-    const confirmDeposit = document.getElementById('confirmDeposit');
-    const uidNote = document.getElementById('uidNote');
-
-    addBalanceBtn.addEventListener('click', async () => {
-      paymentPopup.style.display = "block";
-      uidNote.style.display = "none";
-    });
-
-    closePaymentPopup.addEventListener('click', () => {
-      paymentPopup.style.display = "none";
-    });
-
-    confirmDeposit.addEventListener('click', async () => {
-      const holder = document.getElementById('holderName').value.trim();
-      const accNum = document.getElementById('accountNumber').value.trim();
-      const amount = parseInt(document.getElementById('depositAmount').value, 10);
-
-      if (!holder || !accNum || !amount || amount < 200) {
-        alert("⚠️ All fields are required & amount must be ≥ 200 PKR");
-        return;
-      }
-
-      // call payment creation
-      const res = await createPendingDeposit(amount, holder, accNum);
-      if (res && res.reference) {
-        uidNote.textContent = `Note: Payment sender must include your User UID in the message, otherwise payment won't be verified.`;
-        uidNote.style.display = "block";
-        alert(`✅ Transaction created. Ref: ${res.reference}`);
-      }
-    });
-  </script>
 </body>
 </html>
