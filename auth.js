@@ -17,11 +17,16 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // user ka balance Firestore me save
-    await setDoc(doc(db, "users", user.uid), {
-      email: user.email,
-      balance: 0
-    });
+    // Sirf naya user ka document banega
+    const userRef = doc(db, "users", user.uid);
+    const docSnap = await getDoc(userRef);
+
+    if (!docSnap.exists()) {
+      await setDoc(userRef, {
+        email: user.email,
+        balance: 0
+      });
+    }
 
     alert("Signup successful ✅");
     window.location.href = "index.html"; // redirect to game
@@ -53,7 +58,6 @@ export async function logout() {
 // ✅ Auth check
 onAuthStateChanged(auth, (user) => {
   if (!user && window.location.pathname.endsWith("index.html")) {
-    // agar login nahi hai to game page pe jane ki ijazat nahi
     window.location.href = "auth.html";
   }
 });

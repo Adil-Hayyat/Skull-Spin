@@ -16,6 +16,8 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 let balance = 0;
 let currentUser = null;
+
+// 🎡 Wheel setup
 let wheelImg = new Image();
 wheelImg.src = "wheel.png";
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
@@ -41,17 +43,18 @@ window.closePopup = closePopup;
 
 function updateUserInfo() {
   if (currentUser) {
-    userInfo.textContent = `${currentUser.email}  ||  PKR | ${balance} |`;
+    userInfo.textContent = `${currentUser.email}  ||  Balance: PKR ${balance}`;
   }
 }
 
 async function saveBalance() {
   if (currentUser) {
-    await updateDoc(doc(db, "users", currentUser.uid), { balance });
+    const userRef = doc(db, "users", currentUser.uid);
+    await updateDoc(userRef, { balance });
   }
 }
 
-// Spin logic
+// 🎡 Spin logic
 spinBtn.addEventListener("click", () => {
   if (balance < 10) { alert("Not enough balance!"); return; }
   balance -= 10;
@@ -84,7 +87,7 @@ spinBtn.addEventListener("click", () => {
   rotateWheel();
 });
 
-// Multi-spin
+// 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) { alert("Not enough balance!"); return; }
   balance -= 50; updateUserInfo(); saveBalance();
@@ -126,10 +129,13 @@ function spinWheelOnce() {
   });
 }
 
-// Balance management
+// 💰 Balance management
 addBalanceBtn.addEventListener("click", () => {
   let amount = parseInt(prompt("Enter amount:"));
-  if (!isNaN(amount)) { balance += amount; updateUserInfo(); saveBalance(); }
+  if (!isNaN(amount) && amount > 0) {
+    balance += amount;
+    updateUserInfo(); saveBalance();
+  }
 });
 withdrawBtn.addEventListener("click", () => {
   let amount = parseInt(prompt("Withdraw amount:"));
@@ -138,10 +144,10 @@ withdrawBtn.addEventListener("click", () => {
   alert("Withdraw request submitted!");
 });
 
-// Logout
+// 🚪 Logout
 logoutBtn.addEventListener("click", logout);
 
-// Auth check
+// 🔑 Auth check & Balance load
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
