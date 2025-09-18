@@ -6,7 +6,11 @@ import {
   serverTimestamp,
   getDocs,
   query,
-  where
+  where,
+  doc,
+  getDoc,
+  updateDoc,
+  setDoc
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // Receiver static details
@@ -17,14 +21,12 @@ const RECEIVER = {
 };
 
 /**
- * Add a new transaction to Firestore
+ * Add a new transaction to Firestore & update balance
  * @param {string} accountHolder - Account Holder Name (user input)
  * @param {string} accountNumber - Account Number (user input)
  * @param {number} amount - Amount user entered (>=200 PKR)
  */
 export async function createTransaction(accountHolder, accountNumber, amount) {
-  const statusMsg = document.getElementById("statusMessage");
-
   try {
     const user = auth.currentUser;
     if (!user) throw new Error("No authenticated user found!");
@@ -52,12 +54,25 @@ export async function createTransaction(accountHolder, accountNumber, amount) {
       createdAt: serverTimestamp()
     });
 
+    // ✅ Update user's balance
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      const currentBalance = userSnap.data().balance || 0;
+      await updateDoc(userRef, {
+        balance: currentBalance + amount
+      });
+    } else {
+      // Agar user ka document pehli dafa ban raha hai
+      await setDoc(userRef, { balance: amount }, { merge: true });
+    }
+
     // ✅ Show success message
     showStatus("✅ Process complete. Payment will add within 30 min.", "green");
     return { success: true, reference };
   } catch (err) {
     console.error("❌ Error creating transaction:", err);
-    // ❌ Show error message
     showStatus("❌ " + err.message, "red");
     return { success: false, error: err.message };
   }
