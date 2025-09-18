@@ -6,6 +6,7 @@
   <title>One-Wheely | Game</title>
   <link rel="stylesheet" href="style.css">
 
+  <!-- Firebase Auth check -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
@@ -45,11 +46,11 @@
     </div>
   </div>
 
-  <!-- Add Balance / Payment Popup -->
-  <div id="paymentInstructions" style="display:none; text-align:center; max-width:500px; width:90%; padding:30px; border-radius:15px;">
+  <!-- Add Balance Popup -->
+  <div id="paymentInstructions" style="display:none; text-align:center; max-width:500px; width:90%; padding:30px; border-radius:15px; background:#fff; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:1000;">
     <h3>💳 Payment Instructions</h3>
 
-    <!-- User input fields -->
+    <!-- Input fields -->
     <div style="margin-bottom:15px; text-align:left;">
       <label>Acc. Holder Name:</label><br>
       <input type="text" id="inputAccHolder" placeholder="Enter your name" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
@@ -63,7 +64,7 @@
 
     <hr>
 
-    <!-- Existing instructions -->
+    <!-- Old instructions -->
     <div id="paymentDetails" style="text-align:left;">
       <p><b>User UID:</b> <span id="userID">...</span></p>
       <p style="color:red; font-weight:bold; margin-top:5px;">
@@ -76,27 +77,30 @@
       <p style="color:green;">✅ After payment verification, your balance will be updated automatically.</p>
     </div>
 
-    <button id="closePaymentPopup">Done</button>
+    <button id="doneBtn" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
   </div>
 
+  <!-- Firebase configs -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
 
+  <!-- Popup + Firestore Logic -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
     import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const addBalanceBtn = document.getElementById('addBalanceBtn');
     const paymentPopup = document.getElementById('paymentInstructions');
-    const closePaymentPopup = document.getElementById('closePaymentPopup');
+    const doneBtn = document.getElementById('doneBtn');
     const userIDSpan = document.getElementById('userID');
 
     const inputAccHolder = document.getElementById('inputAccHolder');
     const inputAccNumber = document.getElementById('inputAccNumber');
     const inputAmount = document.getElementById('inputAmount');
 
+    // Show popup directly (no mini tab)
     addBalanceBtn.addEventListener('click', async () => {
       const user = auth.currentUser;
       if (!user) return;
@@ -105,7 +109,8 @@
       paymentPopup.style.display = "block";
     });
 
-    closePaymentPopup.addEventListener('click', async () => {
+    // Done button → save transaction + close popup
+    doneBtn.addEventListener('click', async () => {
       const user = auth.currentUser;
       if (!user) return;
 
@@ -118,10 +123,8 @@
         return;
       }
 
-      // Generate unique reference
       const reference = `REF-${user.uid.slice(0,6)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
 
-      // Add transaction to Firestore
       try {
         await addDoc(collection(db, "transactions"), {
           uid: user.uid,
@@ -134,10 +137,10 @@
           createdAt: serverTimestamp()
         });
 
-        alert("✅ Transaction added successfully!");
+        alert("✅ Transaction request submitted!");
         paymentPopup.style.display = "none";
 
-        // Clear input fields
+        // Clear fields
         inputAccHolder.value = "";
         inputAccNumber.value = "";
         inputAmount.value = "";
