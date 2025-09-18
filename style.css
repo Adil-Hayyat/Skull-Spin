@@ -58,7 +58,7 @@ canvas { border-radius: 50%; }
   min-width: 180px;
 }
 
-/* Popup */
+/* Popup (Game Result) */
 #popup {
   display: none;
   position: fixed;
@@ -83,4 +83,57 @@ canvas { border-radius: 50%; }
   color: white;
   border-radius: 8px;
   cursor: pointer;
+}
+
+/* ============================= */
+/* Payment Instructions Popup    */
+/* ============================= */
+#paymentInstructions {
+  display: none;
+  position: fixed;
+  top: 50%; 
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 20px;
+  max-width: 350px;
+  width: 90%;
+  z-index: 1000;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  text-align: left;
+}
+#paymentInstructions h3 {
+  margin-top: 0;
+  color: #143ad3;
+  font-size: 20px;
+  text-align: center;
+}
+#paymentInstructions p {
+  margin: 8px 0;
+  font-size: 15px;
+  line-height: 1.4em;
+}
+#paymentInstructions hr {
+  margin: 15px 0;
+  border: 0;
+  border-top: 1px solid #ccc;
+}
+#closePaymentPopup {
+  display: block;
+  margin: 0 auto;
+  margin-top: 15px;
+  padding: 8px 15px;
+  background: #e14a3c;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+#closePaymentPopup:hover {
+  background: #b52f25;
 }

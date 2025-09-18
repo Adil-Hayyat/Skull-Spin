@@ -1,6 +1,14 @@
 // payments.js
 import { auth, db } from "./firebase-config.js";
-import { addDoc, collection, serverTimestamp, doc, updateDoc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  doc,
+  updateDoc,
+  getDoc,
+  setDoc
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 const RECEIVER = {
   method: "Easypaisa",
@@ -39,7 +47,7 @@ export async function createPendingDeposit(amount) {
   try {
     await addDoc(collection(db, "transactions"), tx);
 
-    // ✅ Balance Update (Test Mode)
+    // ✅ Balance Update (Temporary / Test Mode)
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
 
@@ -47,30 +55,39 @@ export async function createPendingDeposit(amount) {
       const currentBalance = snap.data().balance || 0;
       await updateDoc(userRef, { balance: currentBalance + Number(amount) });
     } else {
-      // agar user ka record nahi bana abhi tak
       await setDoc(userRef, { balance: Number(amount) });
     }
 
-    // ✅ Show instructions in page
-    const msg =
-      `💸 Send *${amount} PKR* to ${RECEIVER.method}:\n\n` +
-      `📱 Account: ${RECEIVER.accountNumber}\n` +
-      `👤 Name: ${RECEIVER.accountName}\n\n` +
-      `📝 IMPORTANT: In payment note/reference write:\n\n` +
-      `➡️ ${reference}\n\n` +
-      `✅ After sending, your balance will be updated once verified.`;
-
+    // ✅ Show instructions in styled popup
     const container = document.getElementById("paymentInstructions");
     if (container) {
       container.style.display = "block";
-      container.innerHTML = `<pre>${msg}</pre>`;
+      container.innerHTML = `
+        <h3>💳 Deposit Instructions</h3>
+        <p>Follow these steps to add <b>${amount} PKR</b> to your account:</p>
+        <hr>
+        <p><b>Step 1:</b> Open your <b>${RECEIVER.method}</b> app.</p>
+        <p><b>Step 2:</b> Send money to:</p>
+        <p>📱 <b>${RECEIVER.accountNumber}</b><br>👤 ${RECEIVER.accountName}</p>
+        <p><b>Step 3:</b> In the payment note/reference, write:</p>
+        <p style="color:#143ad3; font-weight:bold;">${reference}</p>
+        <p><b>Step 4:</b> Complete the transfer. Your balance will update automatically once verified.</p>
+        <hr>
+        <button id="closePaymentPopup">Close</button>
+      `;
+
+      // ✅ Close button event
+      document.getElementById("closePaymentPopup").addEventListener("click", () => {
+        container.style.display = "none";
+      });
     }
 
+    // ✅ Copy reference for user
     try {
       await navigator.clipboard.writeText(reference);
-      alert("Reference copied ✅\n\nCheck instructions below.");
+      alert("Reference copied ✅\n\nCheck instructions popup.");
     } catch (e) {
-      alert("Check instructions below 👇 (Reference not auto-copied)");
+      alert("Check instructions popup 👇 (Reference not auto-copied)");
     }
 
     return { reference };
