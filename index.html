@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>One-Wheely | Game</title>
   <link rel="stylesheet" href="style.css">
+
+  <!-- Auth Check -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
@@ -46,6 +48,11 @@
     </div>
   </div>
 
+  <!-- Payment Instructions -->
+  <div id="paymentInstructions" style="display:none; margin:20px; padding:15px; border:1px solid #ccc; background:#f9f9f9; border-radius:8px;">
+    <!-- payments.js will inject details here -->
+  </div>
+
   <!-- Firebase + Auth -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
@@ -56,14 +63,14 @@
   <!-- Game logic -->
   <script type="module" src="script.js"></script>
 
-  <!-- Add Balance event listener -->
+  <!-- Add Balance handler -->
   <script type="module">
     import { createPendingDeposit } from './payments.js';
 
     document.getElementById('addBalanceBtn').addEventListener('click', async () => {
       const amount = parseInt(prompt("Enter amount to add (min 200 PKR):"), 10);
       if (!amount || amount < 200) {
-        alert("Minimum 200 PKR required.");
+        alert("⚠️ Minimum 200 PKR required.");
         return;
       }
       await createPendingDeposit(amount);

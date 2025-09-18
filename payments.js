@@ -2,7 +2,14 @@
 // Frontend helper: create pending deposit transaction with unique reference
 
 import { auth, db } from "./firebase-config.js";
-import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { 
+  addDoc, 
+  collection, 
+  serverTimestamp, 
+  doc, 
+  updateDoc, 
+  increment 
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 // Receiver account details (Easypaisa)
 const RECEIVER = {
@@ -53,21 +60,35 @@ export async function createPendingDeposit(amount) {
     // ✅ Save in Firestore → "transactions" collection
     const docRef = await addDoc(collection(db, "transactions"), tx);
 
+    // 🔹 TEST MODE ONLY: Update balance immediately
+    // ⚠️ REMOVE THIS in production (only admin/webhook should confirm payment)
+    const userRef = doc(db, "users", uid);
+    await updateDoc(userRef, { balance: increment(Number(amount)) });
+
     // ✅ Message for user
     const msg =
-      `💸 Send *${amount} PKR* to ${RECEIVER.method}:\n\n` +
-      `📱 Account: ${RECEIVER.accountNumber}\n` +
-      `👤 Name: ${RECEIVER.accountName}\n\n` +
-      `📝 IMPORTANT: In payment note/reference write:\n\n` +
-      `➡️ ${reference}\n\n` +
+      `💸 Send *${amount} PKR* to ${RECEIVER.method}:<br><br>` +
+      `📱 <b>Account:</b> ${RECEIVER.accountNumber}<br>` +
+      `👤 <b>Name:</b> ${RECEIVER.accountName}<br><br>` +
+      `📝 <b>IMPORTANT:</b> In payment note/reference write:<br>` +
+      `<span style="color:red; font-weight:bold;">${reference}</span><br><br>` +
       `✅ After sending, your balance will be updated once verified.`;
+
+    // ✅ Show in HTML (if container exists)
+    const container = document.getElementById("paymentInstructions");
+    if (container) {
+      container.style.display = "block";
+      container.innerHTML = msg;
+    } else {
+      alert(msg.replace(/<br>/g, "\n"));
+    }
 
     // ✅ Try to copy reference for user
     try {
       await navigator.clipboard.writeText(reference);
-      alert(msg + "\n\n(Reference copied to clipboard ✅)");
+      console.log("Reference copied:", reference);
     } catch (e) {
-      alert(msg + "\n\n⚠️ Reference not copied automatically, please copy it manually.");
+      console.warn("Clipboard copy failed:", e);
     }
 
     return { id: docRef.id, reference };
