@@ -74,11 +74,7 @@
     const closePaymentPopup = document.getElementById('closePaymentPopup');
 
     addBalanceBtn.addEventListener('click', async () => {
-      const amount = parseInt(prompt("Enter amount to add (min 200 PKR):"), 10);
-      if (!amount || amount < 200) {
-        alert("⚠️ Minimum 200 PKR required.");
-        return;
-      }
+      const amount = 200; // ✅ fixed minimum amount
 
       // Step 1: Create deposit entry in DB
       await createPendingDeposit(amount);
