@@ -5,67 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>One-Wheely | Auth</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    body {
-      margin: 0;
-      background: #143ad3; /* 👈 aapka theme */
-      font-family: Arial, sans-serif;
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-
-    .auth-box {
-      background: #0c255c;
-      padding: 30px;
-      border-radius: 12px;
-      width: 300px;
-      text-align: center;
-      box-shadow: 0px 4px 10px rgba(0,0,0,0.5);
-    }
-
-    .auth-box h2 {
-      margin-bottom: 20px;
-      color: #fff;
-    }
-
-    .auth-box input {
-      width: 100%;
-      padding: 10px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 6px;
-      outline: none;
-      font-size: 14px;
-    }
-
-    .auth-box button {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      background: #884dff; /* 👈 purple button like spin */
-      color: white;
-      transition: background 0.3s;
-    }
-
-    .auth-box button:hover {
-      background: #0c255c;
-    }
-  </style>
 </head>
 <body>
-  <div class="auth-box">
+  <header>
     <h2>🎡 One-Wheely 🎡</h2>
+  </header>
 
-    <input type="email" id="email" placeholder="Enter Email" required>
-    <input type="password" id="password" placeholder="Enter Password" required>
+  <h3>Login or Signup</h3>
 
+  <!-- Auth form -->
+  <div>
+    <input type="email" id="email" placeholder="Email"><br><br>
+    <input type="password" id="password" placeholder="Password"><br><br>
     <button id="signupBtn">Signup</button>
     <button id="loginBtn">Login</button>
   </div>
@@ -73,38 +24,5 @@
   <!-- Firebase -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
-
-  <!-- Page logic -->
-  <script type="module">
-    import { signup, login } from "./auth.js";
-
-    document.getElementById("signupBtn").addEventListener("click", () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      if (!email || !password) {
-        alert("Email and password required!");
-        return;
-      }
-      if (password.length < 6) {
-        alert("Password must be at least 6 characters long!");
-        return;
-      }
-
-      signup(email, password);
-    });
-
-    document.getElementById("loginBtn").addEventListener("click", () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      if (!email || !password) {
-        alert("Email and password required!");
-        return;
-      }
-
-      login(email, password);
-    });
-  </script>
 </body>
 </html>

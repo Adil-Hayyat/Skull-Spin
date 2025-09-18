@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>One-Wheely | Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h2>🎡 One-Wheely 🎡</h2>
+    <div>
+      <span id="userInfo">Loading...</span>
+      <button id="addBalanceBtn">Add Balance</button>
+      <button id="withdrawBtn">Withdraw</button>
+      <button id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div id="gameWrapper">
+    <canvas id="wheel" width="500" height="500"></canvas>
+    <div class="button-group">
+      <button id="spinBtn">SPIN (-10 PKR)</button>
+      <button id="multiSpinBtn">5-SPIN (-50 PKR)</button>
+    </div>
+  </div>
+
+  <!-- Popup -->
+  <div id="popup">
+    <div id="popupContent">
+      <p id="prizeText"></p>
+      <button onclick="closePopup()">OK</button>
+    </div>
+  </div>
+
+  <!-- Firebase + Auth -->
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="auth.js"></script>
+
+  <!-- Game logic -->
+  <script type="module" src="script.js"></script>
+</body>
+</html>
