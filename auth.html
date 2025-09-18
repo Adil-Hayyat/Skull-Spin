@@ -11,7 +11,7 @@
 
     const auth = getAuth(app);
 
-    // Agar user already login hai → redirect to index.html
+    // Agar user already login hai → redirect
     onAuthStateChanged(auth, (user) => {
       if (user) {
         window.location.href = "index.html";
@@ -27,12 +27,15 @@
   <h3>Login or Signup</h3>
 
   <!-- Auth form -->
-  <div>
-    <input type="email" id="email" placeholder="Email"><br><br>
-    <input type="password" id="password" placeholder="Password"><br><br>
-    <button id="signupBtn">Signup</button>
-    <button id="loginBtn">Login</button>
+  <div style="max-width:400px; margin:auto; text-align:center;">
+    <input type="email" id="email" placeholder="Email" style="width:100%; padding:8px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;"><br>
+    <input type="password" id="password" placeholder="Password" style="width:100%; padding:8px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc;"><br>
+    <button id="signupBtn" style="padding:10px 15px; background:#28a745; color:#fff; border:none; border-radius:8px; cursor:pointer;">Signup</button>
+    <button id="loginBtn" style="padding:10px 15px; background:#007bff; color:#fff; border:none; border-radius:8px; cursor:pointer;">Login</button>
   </div>
+
+  <!-- Status Message -->
+  <div id="statusMessage" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 20px; border-radius:8px; font-weight:bold; z-index:2000;"></div>
 
   <!-- Firebase -->
   <script type="module" src="firebase-config.js"></script>
