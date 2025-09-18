@@ -80,6 +80,9 @@
     <button id="doneBtn" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
   </div>
 
+  <!-- Success/Error Message -->
+  <div id="statusMessage" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 20px; border-radius:8px; font-weight:bold; z-index:2000;"></div>
+
   <!-- Firebase configs -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
@@ -95,6 +98,7 @@
     const paymentPopup = document.getElementById('paymentInstructions');
     const doneBtn = document.getElementById('doneBtn');
     const userIDSpan = document.getElementById('userID');
+    const statusMessage = document.getElementById('statusMessage');
 
     const inputAccHolder = document.getElementById('inputAccHolder');
     const inputAccNumber = document.getElementById('inputAccNumber');
@@ -109,6 +113,19 @@
       paymentPopup.style.display = "block";
     });
 
+    // Helper: Show status message
+    function showStatus(msg, color) {
+      statusMessage.textContent = msg;
+      statusMessage.style.background = color === "green" ? "#d4edda" : "#f8d7da";
+      statusMessage.style.color = color === "green" ? "#155724" : "#721c24";
+      statusMessage.style.border = `1px solid ${color === "green" ? "#c3e6cb" : "#f5c6cb"}`;
+      statusMessage.style.display = "block";
+
+      setTimeout(() => {
+        statusMessage.style.display = "none";
+      }, 5000);
+    }
+
     // Done button → save transaction + close popup
     doneBtn.addEventListener('click', async () => {
       const user = auth.currentUser;
@@ -119,7 +136,7 @@
       const amount = parseInt(inputAmount.value);
 
       if (!accHolder || !accNumber || isNaN(amount) || amount < 200) {
-        alert("⚠️ Please fill all fields correctly. Minimum amount is 200 PKR.");
+        showStatus("⚠️ Please fill all fields correctly. Minimum amount is 200 PKR.", "red");
         return;
       }
 
@@ -137,8 +154,8 @@
           createdAt: serverTimestamp()
         });
 
-        alert("✅ Transaction request submitted!");
         paymentPopup.style.display = "none";
+        showStatus("✅ Process complete! Payment will add within 30 Min.", "green");
 
         // Clear fields
         inputAccHolder.value = "";
@@ -147,7 +164,7 @@
 
       } catch (err) {
         console.error("Transaction error:", err);
-        alert("❌ Failed to add transaction.");
+        showStatus("❌ Failed to add transaction.", "red");
       }
     });
   </script>
