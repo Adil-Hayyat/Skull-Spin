@@ -45,9 +45,10 @@ export async function createPendingDeposit(amount) {
   };
 
   try {
+    // ✅ Transaction add karo
     await addDoc(collection(db, "transactions"), tx);
 
-    // ✅ Balance Update (Temporary / Test Mode)
+    // ✅ Balance update karo (test mode)
     const userRef = doc(db, "users", uid);
     const snap = await getDoc(userRef);
 
@@ -58,38 +59,15 @@ export async function createPendingDeposit(amount) {
       await setDoc(userRef, { balance: Number(amount) });
     }
 
-    // ✅ Show instructions in styled popup
-    const container = document.getElementById("paymentInstructions");
-    if (container) {
-      container.style.display = "block";
-      container.innerHTML = `
-        <h3>💳 Deposit Instructions</h3>
-        <p>Follow these steps to add <b>${amount} PKR</b> to your account:</p>
-        <hr>
-        <p><b>Step 1:</b> Open your <b>${RECEIVER.method}</b> app.</p>
-        <p><b>Step 2:</b> Send money to:</p>
-        <p>📱 <b>${RECEIVER.accountNumber}</b><br>👤 ${RECEIVER.accountName}</p>
-        <p><b>Step 3:</b> In the payment note/reference, write:</p>
-        <p style="color:#143ad3; font-weight:bold;">${reference}</p>
-        <p><b>Step 4:</b> Complete the transfer. Your balance will update automatically once verified.</p>
-        <hr>
-        <button id="closePaymentPopup">Close</button>
-      `;
-
-      // ✅ Close button event
-      document.getElementById("closePaymentPopup").addEventListener("click", () => {
-        container.style.display = "none";
-      });
-    }
-
-    // ✅ Copy reference for user
+    // ✅ Reference clipboard me copy
     try {
       await navigator.clipboard.writeText(reference);
-      alert("Reference copied ✅\n\nCheck instructions popup.");
+      console.log("Reference copied:", reference);
     } catch (e) {
-      alert("Check instructions popup 👇 (Reference not auto-copied)");
+      console.warn("Reference not auto-copied:", reference);
     }
 
+    // 🔹 return reference so index.html can show it in popup
     return { reference };
   } catch (err) {
     console.error("❌ createPendingDeposit error:", err);
