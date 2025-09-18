@@ -1,8 +1,9 @@
 // script.js
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { doc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
+import { createPendingDeposit } from "./payments.js";
 
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
@@ -16,6 +17,8 @@ const logoutBtn = document.getElementById("logoutBtn");
 
 let balance = 0;
 let currentUser = null;
+
+// 🎡 Wheel setup
 let wheelImg = new Image();
 wheelImg.src = "wheel.png";
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
@@ -30,6 +33,7 @@ function drawWheel(rotation) {
 }
 wheelImg.onload = () => drawWheel(0);
 
+// 🎁 Popup
 function showPrize(prize) {
   document.getElementById("prizeText").textContent = prize;
   document.getElementById("popup").style.display = "flex";
@@ -39,22 +43,23 @@ function closePopup() {
 }
 window.closePopup = closePopup;
 
+// 👤 UI update
 function updateUserInfo() {
   if (currentUser) {
     userInfo.textContent = `${currentUser.email}  ||  PKR | ${balance} |`;
   }
 }
 
-// ✅ Balance Firestore me save karo
+// 💾 Balance save
 async function saveBalance() {
   if (currentUser) {
     await updateDoc(doc(db, "users", currentUser.uid), { balance });
   }
 }
 
-// Spin logic
+// 🎡 Spin button
 spinBtn.addEventListener("click", () => {
-  if (balance < 10) { alert("Not enough balance!"); return; }
+  if (balance < 10) { alert("⚠️ Not enough balance!"); return; }
   balance -= 10;
   updateUserInfo(); saveBalance();
 
@@ -85,9 +90,9 @@ spinBtn.addEventListener("click", () => {
   rotateWheel();
 });
 
-// Multi-spin
+// 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
-  if (balance < 50) { alert("Not enough balance!"); return; }
+  if (balance < 50) { alert("⚠️ Not enough balance!"); return; }
   balance -= 50; updateUserInfo(); saveBalance();
 
   let rewards = [];
@@ -127,29 +132,48 @@ function spinWheelOnce() {
   });
 }
 
-// Balance management
-addBalanceBtn.addEventListener("click", () => {
-  let amount = parseInt(prompt("Enter amount:"));
-  if (!isNaN(amount)) { balance += amount; updateUserInfo(); saveBalance(); }
-});
-withdrawBtn.addEventListener("click", () => {
-  let amount = parseInt(prompt("Withdraw amount:"));
-  if (amount > balance) { alert("Not enough balance!"); return; }
-  balance -= amount; updateUserInfo(); saveBalance();
-  alert("Withdraw request submitted!");
+// 💰 Deposit (frontend → payments.js)
+addBalanceBtn.addEventListener("click", async () => {
+  const amount = parseInt(prompt("Enter amount to deposit (min 200 PKR):"), 10);
+  if (!amount) return;
+  await createPendingDeposit(amount);
 });
 
-// Logout
+// 💸 Withdraw (request, not instant)
+withdrawBtn.addEventListener("click", async () => {
+  const amount = parseInt(prompt("Enter amount to withdraw (min 1000 PKR):"), 10);
+  if (!amount || amount < 1000) { alert("⚠️ Minimum withdraw is 1000 PKR."); return; }
+  if (amount > balance) { alert("⚠️ Not enough balance!"); return; }
+
+  try {
+    await addDoc(collection(db, "withdrawals"), {
+      uid: currentUser.uid,
+      amount,
+      status: "pending",
+      createdAt: serverTimestamp()
+    });
+    balance -= amount;
+    updateUserInfo(); saveBalance();
+    alert("✅ Withdraw request submitted!");
+  } catch (err) {
+    console.error("Withdraw error:", err);
+    alert("❌ Failed to submit withdraw request.");
+  }
+});
+
+// 🚪 Logout
 logoutBtn.addEventListener("click", logout);
 
-// ✅ Login ke baad Firestore se balance load karo
-onAuthStateChanged(auth, async (user) => {
+// 🔥 Auth + Realtime balance sync
+onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    const docSnap = await getDoc(doc(db, "users", user.uid));
-    if (docSnap.exists()) {
-      balance = docSnap.data().balance; // ✅ Firestore ka balance use karo
-      updateUserInfo();
-    }
+    // 🔥 Realtime listener → balance update hoti rahegi
+    onSnapshot(doc(db, "users", user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        balance = docSnap.data().balance || 0;
+        updateUserInfo();
+      }
+    });
   }
 });
