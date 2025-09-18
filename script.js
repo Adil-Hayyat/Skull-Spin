@@ -41,7 +41,7 @@ window.closePopup = closePopup;
 
 function updateUserInfo() {
   if (currentUser) {
-    userInfo.textContent = `${currentUser.email} || PKR | ${balance} |`;
+    userInfo.textContent = `${currentUser.email}  ||  PKR | ${balance} |`;
   }
 }
 
