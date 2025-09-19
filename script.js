@@ -81,10 +81,10 @@ spinBtn.addEventListener("click", async () => {
 
   let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
-  let spinTimeTotal = 3000; // 🔥 faster spin
+  let spinTimeTotal = 3000;
 
   function rotateWheel() {
-    spinTime += 16; // ~60fps
+    spinTime += 16;
     if (spinTime >= spinTimeTotal) {
       const degrees = spinAngle % 360;
       const sectorSize = 360 / prizes.length;
@@ -176,6 +176,7 @@ withdrawBtn.addEventListener("click", async () => {
   try {
     await addDoc(collection(db, "withdrawals"), {
       uid: currentUser.uid,
+      email: currentUser.email,
       amount,
       status: "pending",
       createdAt: serverTimestamp(),
@@ -255,12 +256,10 @@ const inputAccHolder = document.getElementById("inputAccHolder");
 const inputAccNumber = document.getElementById("inputAccNumber");
 
 if (addBalanceBtn && doneBtn && paymentPopup) {
-  // Open popup
   addBalanceBtn.addEventListener("click", () => {
     paymentPopup.style.display = "block";
   });
 
-  // Done button
   doneBtn.addEventListener("click", async () => {
     const amount = parseInt(inputAmount.value, 10);
 
@@ -268,7 +267,6 @@ if (addBalanceBtn && doneBtn && paymentPopup) {
       showStatus("⚠️ Minimum deposit is 200 PKR.", "error");
       return;
     }
-
     if (!currentUser) {
       showStatus("⚠️ Please login first!", "error");
       return;
