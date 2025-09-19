@@ -137,7 +137,7 @@ function spinWheelOnce() {
   return new Promise((resolve) => {
     let spinAngle = Math.random() * 360 + 360 * 5;
     let spinTime = 0;
-    let spinTimeTotal = 100;
+    let spinTimeTotal = 10000;
 
     function rotateWheel() {
       spinTime += 30;
