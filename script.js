@@ -70,7 +70,7 @@ async function saveBalance() {
 }
 
 // 🎡 Single Spin
-spinBtn.addEventListener("click", async () => {
+spinBtn.addEventListener("click", () => {
   if (balance < 10) {
     showStatus("⚠️ Not enough balance!", "error");
     return;
@@ -117,13 +117,16 @@ multiSpinBtn.addEventListener("click", async () => {
   updateUserInfo();
   await saveBalance();
 
-  const rewards = [];
+  // Run 5 spins in parallel
+  const spinPromises = [];
   for (let i = 0; i < 5; i++) {
-    const prize = await spinWheelOnce();
-    rewards.push(prize);
+    spinPromises.push(spinWheelOnce());
   }
+  const rewards = await Promise.all(spinPromises);
+
   showPrize("🎁 You got:\n" + rewards.join(", "));
 });
+
 
 function spinWheelOnce() {
   return new Promise((resolve) => {
