@@ -14,8 +14,6 @@ import { logout } from "./auth.js";
 
 // 🎡 Canvas setup
 const canvas = document.getElementById("wheel");
-canvas.width = 500;
-canvas.height = 500;
 const ctx = canvas.getContext("2d");
 
 const spinBtn = document.getElementById("spinBtn");
@@ -36,12 +34,11 @@ const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
 function drawWheel(rotation = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2); // center
+  ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotation);
   ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
 }
-
 wheelImg.onload = () => drawWheel(0);
 
 // 🎁 Popup
@@ -57,11 +54,11 @@ window.closePopup = closePopup;
 // 👤 UI update
 function updateUserInfo() {
   if (currentUser) {
-    userInfo.textContent = `${currentUser.email}  ||  PKR | ${balance} |`;
+    userInfo.textContent = `${currentUser.email} | Balance: ${balance} PKR`;
   }
 }
 
-// 💾 Save balance (Firestore me sync)
+// 💾 Save balance
 async function saveBalance() {
   if (!currentUser) return;
   const userRef = doc(db, "users", currentUser.uid);
@@ -72,7 +69,7 @@ async function saveBalance() {
   }
 }
 
-// 🎡 Spin button
+// 🎡 Single Spin
 spinBtn.addEventListener("click", async () => {
   if (balance < 10) {
     showStatus("⚠️ Not enough balance!", "error");
@@ -82,7 +79,7 @@ spinBtn.addEventListener("click", async () => {
   updateUserInfo();
   await saveBalance();
 
-  let spinAngle = Math.random() * 360 + 360 * 5; // random angle + 5 rounds
+  let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
   let spinTimeTotal = 3000;
 
@@ -102,8 +99,7 @@ spinBtn.addEventListener("click", async () => {
       showPrize("🎁 You got: " + prize);
       return;
     }
-    const easeOut = (t, b, c, d) =>
-      c * ((t = t / d - 1) * t * t + 1) + b;
+    const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
     const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
     drawWheel((angleCurrent * Math.PI) / 180);
     requestAnimationFrame(rotateWheel);
@@ -111,7 +107,7 @@ spinBtn.addEventListener("click", async () => {
   rotateWheel();
 });
 
-// 🎡 Multi-spin (5 spins)
+// 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) {
     showStatus("⚠️ Not enough balance!", "error");
@@ -151,8 +147,7 @@ function spinWheelOnce() {
         resolve(prize);
         return;
       }
-      const easeOut = (t, b, c, d) =>
-        c * ((t = t / d - 1) * t * t + 1) + b;
+      const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
       const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
       drawWheel((angleCurrent * Math.PI) / 180);
       requestAnimationFrame(rotateWheel);
@@ -163,10 +158,7 @@ function spinWheelOnce() {
 
 // 💸 Withdraw
 withdrawBtn.addEventListener("click", async () => {
-  const amount = parseInt(
-    prompt("Enter amount to withdraw (min 1000 PKR):"),
-    10
-  );
+  const amount = parseInt(prompt("Enter amount to withdraw (min 1000 PKR):"), 10);
   if (!amount || amount < 1000) {
     showStatus("⚠️ Minimum withdraw is 1000 PKR.", "error");
     return;
@@ -211,7 +203,6 @@ onAuthStateChanged(auth, async (user) => {
     }
     updateUserInfo();
 
-    // Realtime updates
     onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         balance = docSnap.data().balance || 0;
@@ -221,27 +212,26 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ✅ Status message system
+// ✅ Status message
 function showStatus(message, type) {
   let statusBox = document.getElementById("statusMessage");
   if (!statusBox) {
     statusBox = document.createElement("div");
     statusBox.id = "statusMessage";
-    statusBox.style.position = "fixed";
-    statusBox.style.bottom = "20px";
-    statusBox.style.left = "50%";
-    statusBox.style.transform = "translateX(-50%)";
-    statusBox.style.padding = "12px 20px";
-    statusBox.style.borderRadius = "8px";
-    statusBox.style.fontWeight = "bold";
-    statusBox.style.zIndex = "2000";
     document.body.appendChild(statusBox);
   }
 
   statusBox.textContent = message;
   statusBox.style.display = "block";
-  statusBox.style.background =
-    type === "success" ? "#28a745" : "#dc3545";
+  statusBox.style.position = "fixed";
+  statusBox.style.bottom = "20px";
+  statusBox.style.left = "50%";
+  statusBox.style.transform = "translateX(-50%)";
+  statusBox.style.padding = "12px 20px";
+  statusBox.style.borderRadius = "8px";
+  statusBox.style.fontWeight = "bold";
+  statusBox.style.zIndex = "2000";
+  statusBox.style.background = type === "success" ? "#28a745" : "#dc3545";
   statusBox.style.color = "#fff";
 
   setTimeout(() => {
