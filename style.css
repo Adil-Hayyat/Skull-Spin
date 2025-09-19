@@ -41,14 +41,16 @@ button:hover {
   margin-top: 20px;
 }
 
-/* 🎡 Canvas */
+/* 🎡 Wheel canvas */
 canvas {
   border-radius: 50%;
   display: block;
-  margin: auto;
+  margin: 0 auto;
+  width: 500px;
+  height: 500px;
+  background: transparent;
 }
 
-/* Spin Buttons Group */
 .button-group {
   display: flex;
   gap: 15px;
@@ -79,6 +81,7 @@ canvas {
   border-radius: 10px;
   font-size: 20px;
   font-weight: bold;
+  text-align: center;
 }
 #popup button {
   margin-top: 15px;
@@ -141,4 +144,19 @@ canvas {
 }
 #closePaymentPopup:hover {
   background: #b52f25;
+}
+
+/* ============================= */
+/* Status Message Box (JS added) */
+/* ============================= */
+#statusMessage {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: bold;
+  z-index: 2000;
+  display: none;
 }
