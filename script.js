@@ -1,4 +1,3 @@
-// script.js
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
@@ -15,7 +14,10 @@ import { logout } from "./auth.js";
 
 // 🎡 Canvas setup
 const canvas = document.getElementById("wheel");
+canvas.width = 500;
+canvas.height = 500;
 const ctx = canvas.getContext("2d");
+
 const spinBtn = document.getElementById("spinBtn");
 const multiSpinBtn = document.getElementById("multiSpinBtn");
 const userInfo = document.getElementById("userInfo");
@@ -31,14 +33,15 @@ let wheelImg = new Image();
 wheelImg.src = "./wheel.png";
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
 
-function drawWheel(rotation) {
+function drawWheel(rotation = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.translate(canvas.width / 2, canvas.height / 2); // center
   ctx.rotate(rotation);
-  ctx.drawImage(wheelImg, -250, -250, 500, 500);
+  ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
 }
+
 wheelImg.onload = () => drawWheel(0);
 
 // 🎁 Popup
@@ -79,7 +82,7 @@ spinBtn.addEventListener("click", async () => {
   updateUserInfo();
   await saveBalance();
 
-  let spinAngle = Math.random() * 360 + 360 * 5;
+  let spinAngle = Math.random() * 360 + 360 * 5; // random angle + 5 rounds
   let spinTime = 0;
   let spinTimeTotal = 3000;
 
