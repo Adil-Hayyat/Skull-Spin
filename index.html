@@ -24,6 +24,7 @@
   <header>
     <h2>🎡 One-Wheely 🎡</h2>
     <div>
+      <span id="balanceDisplay" style="margin-right:15px; font-weight:bold; color:green;">Balance: 0 PKR</span>
       <button id="addBalanceBtn">Add Balance</button>
       <button id="withdrawBtn">Withdraw</button>
       <button id="logoutBtn">Logout</button>
@@ -78,7 +79,6 @@
     </div>
     <p id="statusMessage" style="display:none; font-weight:bold; margin-top:10px;"></p>
 
-
     <button id="doneBtn" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
   </div>
 
@@ -94,17 +94,31 @@
   <!-- Popup + Firestore Logic -->
   <script type="module">
     import { auth, db } from "./firebase-config.js";
-    import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { addDoc, collection, serverTimestamp, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
     const addBalanceBtn = document.getElementById('addBalanceBtn');
     const paymentPopup = document.getElementById('paymentInstructions');
     const doneBtn = document.getElementById('doneBtn');
     const userIDSpan = document.getElementById('userID');
     const statusMessage = document.getElementById('statusMessage');
+    const balanceDisplay = document.getElementById('balanceDisplay');
 
     const inputAccHolder = document.getElementById('inputAccHolder');
     const inputAccNumber = document.getElementById('inputAccNumber');
     const inputAmount = document.getElementById('inputAmount');
+
+    // 🔹 Real-time balance listener
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        const userRef = doc(db, "users", user.uid);
+        onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const balance = docSnap.data().balance || 0;
+            balanceDisplay.textContent = `Balance: ${balance} PKR`;
+          }
+        });
+      }
+    });
 
     // Show popup directly (no mini tab)
     addBalanceBtn.addEventListener('click', async () => {
@@ -150,7 +164,7 @@
           amount: amount,
           reference,
           method: "Easypaisa",
-          accountReceiver: "03127196480",
+          accountReceiver: accNumber, // ✅ user ka number store hoga
           accountHolder: accHolder,
           status: "pending",
           createdAt: serverTimestamp()
