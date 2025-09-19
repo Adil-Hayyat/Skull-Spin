@@ -46,7 +46,6 @@ function drawWheel(rotation = 0) {
   ctx.restore();
 
   // Draw pointer at center top
-  ctx.drawImage(pointerImg, canvas.width/2 - pointerImg.width/2, canvas.height/2 - pointerImg.height/2, pointerImg.width, pointerImg.height);
 }
 
 // Draw red dot at stop angle
