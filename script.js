@@ -1,10 +1,10 @@
-// script.js (FULL UPDATED FILE - withdraw prompt removed and replaced with custom modal)
-// Requirements kept from previous version:
-// - pointer.png removed
-// - red dot drawn at landed sector center
-// - single spin and multi-spin animations work (multi runs sequentially, each with full animation)
-// - balance save & realtime sync preserved
-// - browser prompt() removed for withdraw; replaced with a custom in-page modal
+// script.js (FULL UPDATED FILE)
+// Changes in this version:
+// - Withdraw modal updated to show "Enter Account Details", Acc. Holder Name, Acc. Number, Amount fields.
+// - On submit: checks if user already has a pending withdrawal; if yes shows error and prevents submission.
+// - Balance is NOT deducted when creating a withdrawal request. Balance will be deducted only when admin sets status = "approved" (server/admin flow).
+// - Uses Firestore query to check existing pending withdrawals.
+// - All other behavior (wheel, red dot, spin, multi-spin, add-balance modal etc.) kept as before.
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -17,6 +17,9 @@ import {
   serverTimestamp,
   getDoc,
   setDoc,
+  getDocs,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
 
@@ -42,16 +45,11 @@ let currentUser = null;
 const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
 
-// Prize definitions: IMPORTANT — set order to match your wheel graphic clockwise from 0° (top).
-// According to your mapping earlier.
+// Prize definitions and sectors
 const prizes = ["100", "💀", "10", "💀", "00", "💀", "1000", "💀"];
 const SECTOR_COUNT = prizes.length;
 const SECTOR_SIZE = 360 / SECTOR_COUNT; // e.g. 45°
 
-/**
- * Build sectors array: { prize, startDeg, endDeg, centerDeg }
- * startDeg measured clockwise from top (0).
- */
 const sectors = [];
 for (let i = 0; i < SECTOR_COUNT; i++) {
   const start = i * SECTOR_SIZE;
@@ -64,50 +62,27 @@ for (let i = 0; i < SECTOR_COUNT; i++) {
 function clearCanvas() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
-
-/**
- * Draw wheel image with given rotation (radians).
- * rotation = angle the wheel is rotated clockwise in radians.
- */
 function drawWheel(rotation = 0) {
   clearCanvas();
-
-  // draw wheel centered
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotation);
   ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
 }
-
-/**
- * Draw red dot at the CENTER of the sector that corresponds to centerDeg.
- * rotationRad = current wheel rotation in radians (same used when drawing wheel).
- * centerDeg = sector center angle (degrees, measured clockwise from top).
- */
 function drawRedDot(rotationRad, centerDeg) {
-  // convert center angle to radians
   const centerRad = (centerDeg * Math.PI) / 180;
-
-  // We'll rotate to (rotationRad + centerRad) and draw dot at top offset.
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotationRad + centerRad);
-
-  // dot position: slightly below the wheel outer edge
   const radius = Math.min(canvas.width, canvas.height) / 2;
-  const dotDistance = radius - 18; // tweak offset from edge (18 px)
+  const dotDistance = radius - 18; // tweak offset from edge
   ctx.fillStyle = "red";
   ctx.beginPath();
   ctx.arc(0, -dotDistance, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
-
-/**
- * Given finalSpinDegrees (0-360°) calculate sector index landed.
- * We normalize as used previously: wheelDegrees = (360 - finalDegrees) % 360, then index = floor(wheelDegrees / SECTOR_SIZE)
- */
 function getSectorIndexFromStopDegrees(finalDegrees) {
   let deg = finalDegrees % 360;
   if (deg < 0) deg += 360;
@@ -127,7 +102,6 @@ async function saveBalance() {
     await setDoc(userRef, { email: currentUser.email, balance });
   }
 }
-
 function updateUserInfoDisplay() {
   if (userInfo && currentUser) {
     userInfo.textContent = `${currentUser.email} | Balance: ${balance} PKR`;
@@ -141,26 +115,24 @@ async function spinWheel(cost = 10) {
     return null;
   }
 
-  // Deduct cost immediately
+  // Deduct cost immediately for spins (gameplay)
   balance -= cost;
   updateUserInfoDisplay();
   try { await saveBalance(); } catch (e) { /* non-fatal */ }
 
   return new Promise((resolve) => {
-    // generate final spin angle in degrees (randomized)
     const rounds = 5 + Math.floor(Math.random() * 3); // 5..7 rounds
-    const randomExtra = Math.random() * 360; // final offset
-    const spinAngle = rounds * 360 + randomExtra; // total degrees wheel will rotate clockwise
+    const randomExtra = Math.random() * 360;
+    const spinAngle = rounds * 360 + randomExtra;
     let spinTime = 0;
-    const spinTimeTotal = 2200; // ms (snappy)
+    const spinTimeTotal = 2200;
     const startTime = performance.now();
 
     function step(now) {
       spinTime = now - startTime;
       const t = Math.min(spinTime, spinTimeTotal);
-      // easeOut cubic
       const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
-      const currentAngle = easeOut(t, 0, spinAngle, spinTimeTotal); // degrees
+      const currentAngle = easeOut(t, 0, spinAngle, spinTimeTotal);
       const rotationRad = (currentAngle * Math.PI) / 180;
       drawWheel(rotationRad);
 
@@ -169,12 +141,10 @@ async function spinWheel(cost = 10) {
         return;
       }
 
-      // done — final degrees (mod 360)
       const finalDegrees = spinAngle % 360;
       const idx = getSectorIndexFromStopDegrees(finalDegrees);
       const prize = prizes[idx];
 
-      // add prize (if numeric)
       const prizeVal = parseInt(prize);
       if (!isNaN(prizeVal) && prizeVal > 0) {
         balance += prizeVal;
@@ -182,7 +152,6 @@ async function spinWheel(cost = 10) {
         saveBalance().catch(() => {});
       }
 
-      // draw final wheel AND red dot at sector center
       const finalRotationRad = (spinAngle * Math.PI) / 180;
       drawWheel(finalRotationRad);
       const centerDeg = sectors[idx].centerDeg;
@@ -206,7 +175,6 @@ spinBtn?.addEventListener("click", async () => {
   }
 });
 
-// Multi-spin: run sequential spins (each full animation)
 multiSpinBtn?.addEventListener("click", async () => {
   if (balance < 50) {
     showStatus("⚠️ Not enough balance!", "error");
@@ -216,7 +184,7 @@ multiSpinBtn?.addEventListener("click", async () => {
   multiSpinBtn.disabled = true;
   spinBtn.disabled = true;
 
-  // deduct once
+  // deduct once for 5 spins
   balance -= 50;
   updateUserInfoDisplay();
   try { await saveBalance(); } catch (e) {}
@@ -224,10 +192,8 @@ multiSpinBtn?.addEventListener("click", async () => {
   const results = [];
   try {
     for (let i = 0; i < 5; i++) {
-      // each spin cost 0 because we already deducted 50
-      const prize = await spinWheel(0);
+      const prize = await spinWheel(0); // pass 0 so spinWheel doesn't deduct again
       if (prize) results.push(prize);
-      // small pause between spins
       await new Promise(r => setTimeout(r, 200));
     }
     showPrize("🎁 You got:\n" + results.join(", "));
@@ -237,10 +203,19 @@ multiSpinBtn?.addEventListener("click", async () => {
   }
 });
 
-// -------- Withdraw: replace browser prompt() with custom modal --------
+// -------- Withdraw modal (updated) --------
 /**
- * Creates modal DOM for withdraw if it doesn't exist.
- * Modal contains amount input (min 1000), Submit and Cancel buttons.
+ * Modal now includes:
+ * - Title: "Enter Account Details"
+ * - Acc. Holder's Name (input)
+ * - Acc. Number (input)
+ * - Amount (input, min 1000)
+ *
+ * On submit:
+ * - Checks if current user already has a pending withdrawal (query)
+ * - If pending exists => show error, DO NOT create new withdrawal
+ * - If okay => create withdrawal doc with status "pending" (do NOT deduct balance here)
+ * - Balance remains unchanged until admin approves (server/admin action will deduct or update user balance)
  */
 function ensureWithdrawModal() {
   if (document.getElementById("withdrawModal")) return;
@@ -257,24 +232,37 @@ function ensureWithdrawModal() {
   modalOverlay.style.alignItems = "center";
   modalOverlay.style.justifyContent = "center";
   modalOverlay.style.zIndex = "3000";
-  modalOverlay.style.visibility = "hidden"; // hidden by default
+  modalOverlay.style.visibility = "hidden";
 
   const box = document.createElement("div");
   box.style.background = "#fff";
   box.style.padding = "18px";
   box.style.borderRadius = "10px";
-  box.style.minWidth = "300px";
+  box.style.minWidth = "340px";
   box.style.boxShadow = "0 6px 20px rgba(0,0,0,0.2)";
   box.style.textAlign = "left";
   box.style.color = "#000";
 
   box.innerHTML = `
-    <h3 style="margin:0 0 10px 0; color:#143ad3;">Withdraw</h3>
-    <div style="margin-bottom:8px;">
+    <h3 style="margin:0 0 10px 0; color:#143ad3;">Enter Account Details</h3>
+
+    <div style="margin-bottom:10px;">
+      <label style="font-weight:600;">Acc. Holder's Name</label>
+      <input id="withdrawHolderInput" type="text" placeholder="Full name" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label style="font-weight:600;">Acc. Number</label>
+      <input id="withdrawNumberInput" type="text" placeholder="e.g. 03XXXXXXXXX" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
+    </div>
+
+    <div style="margin-bottom:10px;">
       <label style="font-weight:600;">Amount (min 1000 PKR)</label>
       <input id="withdrawAmountInput" type="number" min="1000" placeholder="1000" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
     </div>
+
     <div id="withdrawError" style="color:#721c24; display:none; margin-bottom:8px;"></div>
+
     <div style="display:flex; gap:8px; justify-content:flex-end;">
       <button id="withdrawCancelBtn" style="padding:8px 12px; border-radius:8px; border:none; background:#ccc; cursor:pointer;">Cancel</button>
       <button id="withdrawSubmitBtn" style="padding:8px 12px; border-radius:8px; border:none; background:#e14a3c; color:#fff; cursor:pointer;">Submit</button>
@@ -284,17 +272,28 @@ function ensureWithdrawModal() {
   modalOverlay.appendChild(box);
   document.body.appendChild(modalOverlay);
 
-  // event listeners
   document.getElementById("withdrawCancelBtn").addEventListener("click", () => {
     hideWithdrawModal();
   });
 
   document.getElementById("withdrawSubmitBtn").addEventListener("click", async () => {
+    const holder = document.getElementById("withdrawHolderInput").value.trim();
+    const number = document.getElementById("withdrawNumberInput").value.trim();
     const input = document.getElementById("withdrawAmountInput");
-    const errDiv = document.getElementById("withdrawError");
     const value = parseInt(input.value, 10);
+    const errDiv = document.getElementById("withdrawError");
 
-    // Validation
+    // validation
+    if (!holder) {
+      errDiv.textContent = "⚠️ Please enter account holder's name.";
+      errDiv.style.display = "block";
+      return;
+    }
+    if (!number) {
+      errDiv.textContent = "⚠️ Please enter account number.";
+      errDiv.style.display = "block";
+      return;
+    }
     if (!value || value < 1000) {
       errDiv.textContent = "⚠️ Amount must be at least 1000 PKR.";
       errDiv.style.display = "block";
@@ -306,12 +305,28 @@ function ensureWithdrawModal() {
       return;
     }
     if (value > balance) {
-      errDiv.textContent = "⚠️ Not enough balance.";
+      errDiv.textContent = "⚠️ You do not have enough balance.";
       errDiv.style.display = "block";
       return;
     }
 
-    // proceed with withdraw (disable submit while processing)
+    // Check existing pending withdrawal(s)
+    try {
+      const q = query(collection(db, "withdrawals"), where("uid", "==", currentUser.uid), where("status", "==", "pending"));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        errDiv.textContent = "⚠️ You already have a pending withdrawal. Wait until it is processed.";
+        errDiv.style.display = "block";
+        return;
+      }
+    } catch (err) {
+      console.error("Error checking pending withdrawals:", err);
+      errDiv.textContent = "❌ Unable to check pending withdrawals. Try again.";
+      errDiv.style.display = "block";
+      return;
+    }
+
+    // proceed to create withdrawal request (DO NOT deduct balance here)
     const submitBtn = document.getElementById("withdrawSubmitBtn");
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
@@ -320,19 +335,18 @@ function ensureWithdrawModal() {
       await addDoc(collection(db, "withdrawals"), {
         uid: currentUser.uid,
         email: currentUser.email,
+        accountHolder: holder,
+        accountNumber: number,
         amount: value,
         status: "pending",
-        createdAt: serverTimestamp(),
+        createdAt: serverTimestamp()
       });
 
-      balance -= value;
-      updateUserInfoDisplay();
-      try { await saveBalance(); } catch (e) {}
-
+      // Do NOT deduct balance here. Admin must approve and update user's balance.
       hideWithdrawModal();
-      showStatus(`✅ Withdraw request for ${value} PKR submitted!`, "success");
+      showStatus(`✅ Withdraw request submitted for ${value} PKR. Wait for admin approval.`, "success");
     } catch (err) {
-      console.error("Withdraw error:", err);
+      console.error("Withdraw creation error:", err);
       errDiv.textContent = "❌ Failed to submit withdraw request.";
       errDiv.style.display = "block";
     } finally {
@@ -341,7 +355,6 @@ function ensureWithdrawModal() {
     }
   });
 
-  // hide on ESC
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideWithdrawModal();
   });
@@ -352,9 +365,13 @@ function showWithdrawModal() {
   const m = document.getElementById("withdrawModal");
   if (!m) return;
   m.style.visibility = "visible";
-  const input = document.getElementById("withdrawAmountInput");
   const errDiv = document.getElementById("withdrawError");
-  if (input) { input.value = ""; input.focus(); }
+  const h = document.getElementById("withdrawHolderInput");
+  const n = document.getElementById("withdrawNumberInput");
+  const a = document.getElementById("withdrawAmountInput");
+  if (h) h.value = "";
+  if (n) n.value = "";
+  if (a) a.value = "";
   if (errDiv) { errDiv.style.display = "none"; errDiv.textContent = ""; }
 }
 
@@ -364,9 +381,8 @@ function hideWithdrawModal() {
   m.style.visibility = "hidden";
 }
 
-// Replace previous prompt-based withdraw with modal
+// open withdraw modal
 withdrawBtn?.addEventListener("click", async () => {
-  // open custom modal
   if (!currentUser) {
     showStatus("⚠️ Please login first!", "error");
     return;
