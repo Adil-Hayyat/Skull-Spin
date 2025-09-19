@@ -81,10 +81,10 @@ spinBtn.addEventListener("click", async () => {
 
   let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
-  let spinTimeTotal = 3000; // 🔥 shorter duration = faster result
+  let spinTimeTotal = 3000; // 🔥 faster spin
 
   function rotateWheel() {
-    spinTime += 16; // 🔥 16ms = ~60 FPS (smoother, no lag)
+    spinTime += 16; // ~60fps
     if (spinTime >= spinTimeTotal) {
       const degrees = spinAngle % 360;
       const sectorSize = 360 / prizes.length;
@@ -111,7 +111,6 @@ spinBtn.addEventListener("click", async () => {
   rotateWheel();
 });
 
-
 // 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) {
@@ -122,7 +121,6 @@ multiSpinBtn.addEventListener("click", async () => {
   updateUserInfo();
   await saveBalance();
 
-  // Run 5 spins in parallel
   const spinPromises = [];
   for (let i = 0; i < 5; i++) {
     spinPromises.push(spinWheelOnce());
@@ -131,7 +129,6 @@ multiSpinBtn.addEventListener("click", async () => {
 
   showPrize("🎁 You got:\n" + rewards.join(", "));
 });
-
 
 function spinWheelOnce() {
   return new Promise((resolve) => {
@@ -247,13 +244,15 @@ function showStatus(message, type) {
   }, 5000);
 }
 
-
 // =========================
 // 💰 Add Balance Popup Code
 // =========================
 const addBalanceBtn = document.getElementById("addBalanceBtn");
 const doneBtn = document.getElementById("doneBtn");
 const paymentPopup = document.getElementById("paymentInstructions");
+const inputAmount = document.getElementById("inputAmount");
+const inputAccHolder = document.getElementById("inputAccHolder");
+const inputAccNumber = document.getElementById("inputAccNumber");
 
 if (addBalanceBtn && doneBtn && paymentPopup) {
   // Open popup
@@ -261,14 +260,12 @@ if (addBalanceBtn && doneBtn && paymentPopup) {
     paymentPopup.style.display = "block";
   });
 
-  // Close + Save transaction
+  // Done button
   doneBtn.addEventListener("click", async () => {
-    paymentPopup.style.display = "none";
+    const amount = parseInt(inputAmount.value, 10);
 
-    const amount = parseInt(prompt("Enter deposit amount (min 100 PKR):"), 10);
-
-    if (!amount || amount < 100) {
-      showStatus("⚠️ Minimum deposit is 100 PKR.", "error");
+    if (!amount || amount < 200) {
+      showStatus("⚠️ Minimum deposit is 200 PKR.", "error");
       return;
     }
 
@@ -281,12 +278,18 @@ if (addBalanceBtn && doneBtn && paymentPopup) {
       await addDoc(collection(db, "payments"), {
         uid: currentUser.uid,
         email: currentUser.email,
-        method: "Easypaisa", // 🔥 popup details ke hisaab se
-        accountNumber: "03123456789", // 🔥 yaha apna receiver account number likhna
+        name: inputAccHolder.value || "",
+        number: inputAccNumber.value || "",
         amount,
+        method: "Easypaisa",
         status: "pending",
         createdAt: serverTimestamp(),
       });
+
+      paymentPopup.style.display = "none";
+      inputAmount.value = "";
+      inputAccHolder.value = "";
+      inputAccNumber.value = "";
 
       showStatus("✅ Deposit request submitted! Admin will confirm soon.", "success");
     } catch (err) {
