@@ -34,6 +34,7 @@ let pointerImg = new Image();
 pointerImg.src = "./pointer.png";
 
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
+const sectorSize = 360 / prizes.length; // 45°
 
 function drawWheel(rotation = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -46,13 +47,18 @@ function drawWheel(rotation = 0) {
   ctx.restore();
 
   // Draw pointer at center top
-}
-
-// Draw red dot at stop angle
-function drawRedDot(angle) {
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate((angle * Math.PI) / 180);
+  ctx.drawImage(pointerImg, -pointerImg.width / 2, -canvas.height / 2 + 10);
+  ctx.restore();
+}
+
+// Draw red dot at corrected angle
+function drawRedDot(angle) {
+  const correctedAngle = angle + sectorSize / 2; // add 22.5° to show at part center
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((correctedAngle * Math.PI) / 180);
   ctx.fillStyle = "red";
   ctx.beginPath();
   ctx.arc(0, -canvas.height / 2 + 20, 10, 0, 2 * Math.PI);
@@ -91,7 +97,7 @@ async function saveBalance() {
   }
 }
 
-// Spin function
+// 🎡 Spin function
 async function spinWheel(cost = 10) {
   if (balance < cost) {
     showStatus("⚠️ Not enough balance!", "error");
@@ -110,7 +116,6 @@ async function spinWheel(cost = 10) {
       spinTime += 16;
       if (spinTime >= spinTimeTotal) {
         const degrees = spinAngle % 360;
-        const sectorSize = 360 / prizes.length;
         const index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
         const prize = prizes[index];
 
@@ -121,7 +126,7 @@ async function spinWheel(cost = 10) {
         }
 
         drawWheel((spinAngle * Math.PI) / 180);
-        drawRedDot(degrees);
+        drawRedDot(degrees); // red dot at center of part
         resolve(prize);
         return;
       }
@@ -131,7 +136,6 @@ async function spinWheel(cost = 10) {
 
       const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
       drawWheel((angleCurrent * Math.PI) / 180);
-
       requestAnimationFrame(rotateWheel);
     }
     rotateWheel();
@@ -144,7 +148,7 @@ spinBtn.addEventListener("click", async () => {
   if (prize) showPrize("🎁 You got: " + prize);
 });
 
-// 🎡 Multi-spin (5 times with animation for each)
+// 🎡 Multi-spin (5 times, full animation each spin)
 multiSpinBtn.addEventListener("click", async () => {
   if (balance < 50) {
     showStatus("⚠️ Not enough balance!", "error");
