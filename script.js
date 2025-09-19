@@ -49,7 +49,6 @@ function drawWheel(rotation = 0) {
   // Draw pointer at center top
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.drawImage(pointerImg, -pointerImg.width / 2, -canvas.height / 2 + 10);
   ctx.restore();
 }
 
