@@ -246,3 +246,24 @@ function showStatus(message, type) {
     statusBox.style.display = "none";
   }, 5000);
 }
+
+
+// =========================
+// 💰 Add Balance Popup Code
+// =========================
+const addBalanceBtn = document.getElementById("addBalanceBtn");
+const doneBtn = document.getElementById("doneBtn");
+const paymentPopup = document.getElementById("paymentInstructions");
+
+if (addBalanceBtn && doneBtn && paymentPopup) {
+  // Open popup
+  addBalanceBtn.addEventListener("click", () => {
+    paymentPopup.style.display = "block";
+  });
+
+  // Close popup
+  doneBtn.addEventListener("click", () => {
+    paymentPopup.style.display = "none";
+    showStatus("✅ Process complete. Payment will add within 30 min.", "success");
+  });
+}
