@@ -1,9 +1,10 @@
-// script.js (FULL UPDATED FILE)
-// Requirements met:
+// script.js (FULL UPDATED FILE - withdraw prompt removed and replaced with custom modal)
+// Requirements kept from previous version:
 // - pointer.png removed
-// - red dot drawn exactly at the landed sector's CENTER
+// - red dot drawn at landed sector center
 // - single spin and multi-spin animations work (multi runs sequentially, each with full animation)
 // - balance save & realtime sync preserved
+// - browser prompt() removed for withdraw; replaced with a custom in-page modal
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -42,8 +43,7 @@ const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
 
 // Prize definitions: IMPORTANT — set order to match your wheel graphic clockwise from 0° (top).
-// You earlier described these ranges; map them accordingly.
-// We'll define `prizes` and derive sectors from index (each sector = 360 / n).
+// According to your mapping earlier.
 const prizes = ["100", "💀", "10", "💀", "00", "💀", "1000", "💀"];
 const SECTOR_COUNT = prizes.length;
 const SECTOR_SIZE = 360 / SECTOR_COUNT; // e.g. 45°
@@ -82,8 +82,6 @@ function drawWheel(rotation = 0) {
 
 /**
  * Draw red dot at the CENTER of the sector that corresponds to centerDeg.
- * We draw the dot attached to the wheel image (so it rotates with wheel).
- *
  * rotationRad = current wheel rotation in radians (same used when drawing wheel).
  * centerDeg = sector center angle (degrees, measured clockwise from top).
  */
@@ -107,20 +105,13 @@ function drawRedDot(rotationRad, centerDeg) {
 }
 
 /**
- * Given finalSpinDegrees (0-360, total spin %360), return sector index landed.
- * We use same mapping as earlier: sector i covers [i*SECTOR_SIZE, (i+1)*SECTOR_SIZE)
- * But your code used index = floor((360 - degrees)/sectorSize). We'll use a consistent mapping:
- *
- * We define "wheelDegrees" = (360 - finalDegrees) % 360 so that top/indicator aligns.
- * Then index = Math.floor(wheelDegrees / SECTOR_SIZE).
+ * Given finalSpinDegrees (0-360°) calculate sector index landed.
+ * We normalize as used previously: wheelDegrees = (360 - finalDegrees) % 360, then index = floor(wheelDegrees / SECTOR_SIZE)
  */
 function getSectorIndexFromStopDegrees(finalDegrees) {
-  // normalize 0..360
   let deg = finalDegrees % 360;
   if (deg < 0) deg += 360;
-
-  // convert to wheelDegrees (the value used to index into sectors)
-  const wheelDegrees = (360 - deg) % 360; // matches earlier logic where 0 is top
+  const wheelDegrees = (360 - deg) % 360;
   let index = Math.floor(wheelDegrees / SECTOR_SIZE);
   index = ((index % SECTOR_COUNT) + SECTOR_COUNT) % SECTOR_COUNT;
   return index;
@@ -144,14 +135,6 @@ function updateUserInfoDisplay() {
 }
 
 // -------- Wheel animation & result handling --------
-/**
- * spinWheel: performs rotation animation and returns the prize string when done.
- * - cost: amount to deduct (default 10)
- * Behavior:
- * - deduct cost immediately (and save)
- * - animate easing-out rotation
- * - on stop: compute landed sector index, add prize to balance (if numeric), draw final wheel and red dot, resolve prize
- */
 async function spinWheel(cost = 10) {
   if (balance < cost) {
     showStatus("⚠️ Not enough balance!", "error");
@@ -165,11 +148,11 @@ async function spinWheel(cost = 10) {
 
   return new Promise((resolve) => {
     // generate final spin angle in degrees (randomized)
-    const rounds = 5 + Math.floor(Math.random() * 3); // 5..7 rounds for variety
+    const rounds = 5 + Math.floor(Math.random() * 3); // 5..7 rounds
     const randomExtra = Math.random() * 360; // final offset
     const spinAngle = rounds * 360 + randomExtra; // total degrees wheel will rotate clockwise
     let spinTime = 0;
-    const spinTimeTotal = 2200; // ms (reduced for snappy feel)
+    const spinTimeTotal = 2200; // ms (snappy)
     const startTime = performance.now();
 
     function step(now) {
@@ -187,8 +170,7 @@ async function spinWheel(cost = 10) {
       }
 
       // done — final degrees (mod 360)
-      const finalDegrees = spinAngle % 360; // 0..360: total rotation degrees clockwise
-      // determine which sector landed
+      const finalDegrees = spinAngle % 360;
       const idx = getSectorIndexFromStopDegrees(finalDegrees);
       const prize = prizes[idx];
 
@@ -197,14 +179,12 @@ async function spinWheel(cost = 10) {
       if (!isNaN(prizeVal) && prizeVal > 0) {
         balance += prizeVal;
         updateUserInfoDisplay();
-        // save balance (best-effort)
         saveBalance().catch(() => {});
       }
 
       // draw final wheel AND red dot at sector center
       const finalRotationRad = (spinAngle * Math.PI) / 180;
       drawWheel(finalRotationRad);
-      // get sector center degrees
       const centerDeg = sectors[idx].centerDeg;
       drawRedDot(finalRotationRad, centerDeg);
 
@@ -217,7 +197,6 @@ async function spinWheel(cost = 10) {
 
 // -------- Button handlers --------
 spinBtn?.addEventListener("click", async () => {
-  // disable button until finished to prevent double clicks
   spinBtn.disabled = true;
   try {
     const prize = await spinWheel(10);
@@ -234,7 +213,6 @@ multiSpinBtn?.addEventListener("click", async () => {
     return;
   }
 
-  // disable to avoid overlapping runs
   multiSpinBtn.disabled = true;
   spinBtn.disabled = true;
 
@@ -246,11 +224,10 @@ multiSpinBtn?.addEventListener("click", async () => {
   const results = [];
   try {
     for (let i = 0; i < 5; i++) {
-      // each spin has cost 0 because we've already deducted 50
-      // but spinWheel will still attempt to deduct cost; pass 0 to avoid double deduct
+      // each spin cost 0 because we already deducted 50
       const prize = await spinWheel(0);
       if (prize) results.push(prize);
-      // small pause between spins (optional)
+      // small pause between spins
       await new Promise(r => setTimeout(r, 200));
     }
     showPrize("🎁 You got:\n" + results.join(", "));
@@ -260,36 +237,144 @@ multiSpinBtn?.addEventListener("click", async () => {
   }
 });
 
-// -------- Withdraw, logout, firestore sync --------
-withdrawBtn?.addEventListener("click", async () => {
-  const amount = parseInt(prompt("Enter amount to withdraw (min 1000 PKR):"), 10);
-  if (!amount || amount < 1000) {
-    showStatus("⚠️ Minimum withdraw is 1000 PKR.", "error");
-    return;
-  }
-  if (amount > balance) {
-    showStatus("⚠️ Not enough balance!", "error");
-    return;
-  }
+// -------- Withdraw: replace browser prompt() with custom modal --------
+/**
+ * Creates modal DOM for withdraw if it doesn't exist.
+ * Modal contains amount input (min 1000), Submit and Cancel buttons.
+ */
+function ensureWithdrawModal() {
+  if (document.getElementById("withdrawModal")) return;
 
-  try {
-    await addDoc(collection(db, "withdrawals"), {
-      uid: currentUser.uid,
-      email: currentUser.email,
-      amount,
-      status: "pending",
-      createdAt: serverTimestamp(),
-    });
-    balance -= amount;
-    updateUserInfoDisplay();
-    await saveBalance();
-    showStatus("✅ Withdraw request submitted!", "success");
-  } catch (err) {
-    console.error("Withdraw error:", err);
-    showStatus("❌ Failed to submit withdraw request.", "error");
+  const modalOverlay = document.createElement("div");
+  modalOverlay.id = "withdrawModal";
+  modalOverlay.style.position = "fixed";
+  modalOverlay.style.top = "0";
+  modalOverlay.style.left = "0";
+  modalOverlay.style.width = "100%";
+  modalOverlay.style.height = "100%";
+  modalOverlay.style.background = "rgba(0,0,0,0.5)";
+  modalOverlay.style.display = "flex";
+  modalOverlay.style.alignItems = "center";
+  modalOverlay.style.justifyContent = "center";
+  modalOverlay.style.zIndex = "3000";
+  modalOverlay.style.visibility = "hidden"; // hidden by default
+
+  const box = document.createElement("div");
+  box.style.background = "#fff";
+  box.style.padding = "18px";
+  box.style.borderRadius = "10px";
+  box.style.minWidth = "300px";
+  box.style.boxShadow = "0 6px 20px rgba(0,0,0,0.2)";
+  box.style.textAlign = "left";
+  box.style.color = "#000";
+
+  box.innerHTML = `
+    <h3 style="margin:0 0 10px 0; color:#143ad3;">Withdraw</h3>
+    <div style="margin-bottom:8px;">
+      <label style="font-weight:600;">Amount (min 1000 PKR)</label>
+      <input id="withdrawAmountInput" type="number" min="1000" placeholder="1000" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
+    </div>
+    <div id="withdrawError" style="color:#721c24; display:none; margin-bottom:8px;"></div>
+    <div style="display:flex; gap:8px; justify-content:flex-end;">
+      <button id="withdrawCancelBtn" style="padding:8px 12px; border-radius:8px; border:none; background:#ccc; cursor:pointer;">Cancel</button>
+      <button id="withdrawSubmitBtn" style="padding:8px 12px; border-radius:8px; border:none; background:#e14a3c; color:#fff; cursor:pointer;">Submit</button>
+    </div>
+  `;
+
+  modalOverlay.appendChild(box);
+  document.body.appendChild(modalOverlay);
+
+  // event listeners
+  document.getElementById("withdrawCancelBtn").addEventListener("click", () => {
+    hideWithdrawModal();
+  });
+
+  document.getElementById("withdrawSubmitBtn").addEventListener("click", async () => {
+    const input = document.getElementById("withdrawAmountInput");
+    const errDiv = document.getElementById("withdrawError");
+    const value = parseInt(input.value, 10);
+
+    // Validation
+    if (!value || value < 1000) {
+      errDiv.textContent = "⚠️ Amount must be at least 1000 PKR.";
+      errDiv.style.display = "block";
+      return;
+    }
+    if (!currentUser) {
+      errDiv.textContent = "⚠️ Please login first.";
+      errDiv.style.display = "block";
+      return;
+    }
+    if (value > balance) {
+      errDiv.textContent = "⚠️ Not enough balance.";
+      errDiv.style.display = "block";
+      return;
+    }
+
+    // proceed with withdraw (disable submit while processing)
+    const submitBtn = document.getElementById("withdrawSubmitBtn");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+
+    try {
+      await addDoc(collection(db, "withdrawals"), {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        amount: value,
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+
+      balance -= value;
+      updateUserInfoDisplay();
+      try { await saveBalance(); } catch (e) {}
+
+      hideWithdrawModal();
+      showStatus(`✅ Withdraw request for ${value} PKR submitted!`, "success");
+    } catch (err) {
+      console.error("Withdraw error:", err);
+      errDiv.textContent = "❌ Failed to submit withdraw request.";
+      errDiv.style.display = "block";
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit";
+    }
+  });
+
+  // hide on ESC
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideWithdrawModal();
+  });
+}
+
+function showWithdrawModal() {
+  ensureWithdrawModal();
+  const m = document.getElementById("withdrawModal");
+  if (!m) return;
+  m.style.visibility = "visible";
+  const input = document.getElementById("withdrawAmountInput");
+  const errDiv = document.getElementById("withdrawError");
+  if (input) { input.value = ""; input.focus(); }
+  if (errDiv) { errDiv.style.display = "none"; errDiv.textContent = ""; }
+}
+
+function hideWithdrawModal() {
+  const m = document.getElementById("withdrawModal");
+  if (!m) return;
+  m.style.visibility = "hidden";
+}
+
+// Replace previous prompt-based withdraw with modal
+withdrawBtn?.addEventListener("click", async () => {
+  // open custom modal
+  if (!currentUser) {
+    showStatus("⚠️ Please login first!", "error");
+    return;
   }
+  showWithdrawModal();
 });
 
+// -------- Logout, firestore sync --------
 logoutBtn?.addEventListener("click", logout);
 
 // Realtime user balance sync
@@ -315,7 +400,6 @@ onAuthStateChanged(auth, async (user) => {
     });
   } else {
     currentUser = null;
-    // optionally clear display
     if (userInfo) userInfo.textContent = "...";
   }
 });
