@@ -1,6 +1,16 @@
+// script.js
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import { doc, updateDoc, onSnapshot, collection, addDoc, serverTimestamp, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import {
+  doc,
+  updateDoc,
+  onSnapshot,
+  collection,
+  addDoc,
+  serverTimestamp,
+  getDoc,
+  setDoc,
+} from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
 
 // 🎡 Canvas setup
@@ -16,7 +26,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 let balance = 0;
 let currentUser = null;
 
-// 🎡 Wheel image (fixed path)
+// 🎡 Wheel image
 let wheelImg = new Image();
 wheelImg.src = "./wheel.png";
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
@@ -48,23 +58,26 @@ function updateUserInfo() {
   }
 }
 
-// 💾 Save balance
+// 💾 Save balance (Firestore me sync)
 async function saveBalance() {
   if (!currentUser) return;
   const userRef = doc(db, "users", currentUser.uid);
-  const snap = await getDoc(userRef);
-  if (!snap.exists()) {
-    await setDoc(userRef, { email: currentUser.email, balance });
-  } else {
+  try {
     await updateDoc(userRef, { balance });
+  } catch {
+    await setDoc(userRef, { email: currentUser.email, balance });
   }
 }
 
 // 🎡 Spin button
-spinBtn.addEventListener("click", () => {
-  if (balance < 10) { showStatus("⚠️ Not enough balance!", "error"); return; }
+spinBtn.addEventListener("click", async () => {
+  if (balance < 10) {
+    showStatus("⚠️ Not enough balance!", "error");
+    return;
+  }
   balance -= 10;
-  updateUserInfo(); saveBalance();
+  updateUserInfo();
+  await saveBalance();
 
   let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
@@ -80,23 +93,30 @@ spinBtn.addEventListener("click", () => {
 
       if (prize !== "💀" && prize !== "00") {
         balance += parseInt(prize);
-        updateUserInfo(); saveBalance();
+        updateUserInfo();
+        saveBalance();
       }
       showPrize("🎁 You got: " + prize);
       return;
     }
-    const easeOut = (t, b, c, d) => c * ((t = t/d - 1) * t * t + 1) + b;
+    const easeOut = (t, b, c, d) =>
+      c * ((t = t / d - 1) * t * t + 1) + b;
     const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-    drawWheel(angleCurrent * Math.PI / 180);
+    drawWheel((angleCurrent * Math.PI) / 180);
     requestAnimationFrame(rotateWheel);
   }
   rotateWheel();
 });
 
-// 🎡 Multi-spin
+// 🎡 Multi-spin (5 spins)
 multiSpinBtn.addEventListener("click", async () => {
-  if (balance < 50) { showStatus("⚠️ Not enough balance!", "error"); return; }
-  balance -= 50; updateUserInfo(); saveBalance();
+  if (balance < 50) {
+    showStatus("⚠️ Not enough balance!", "error");
+    return;
+  }
+  balance -= 50;
+  updateUserInfo();
+  await saveBalance();
 
   const rewards = [];
   for (let i = 0; i < 5; i++) {
@@ -119,16 +139,19 @@ function spinWheelOnce() {
         const sectorSize = 360 / prizes.length;
         const index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
         const prize = prizes[index];
+
         if (prize !== "💀" && prize !== "00") {
           balance += parseInt(prize);
-          updateUserInfo(); saveBalance();
+          updateUserInfo();
+          saveBalance();
         }
         resolve(prize);
         return;
       }
-      const easeOut = (t, b, c, d) => c * ((t = t/d - 1) * t * t + 1) + b;
+      const easeOut = (t, b, c, d) =>
+        c * ((t = t / d - 1) * t * t + 1) + b;
       const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-      drawWheel(angleCurrent * Math.PI / 180);
+      drawWheel((angleCurrent * Math.PI) / 180);
       requestAnimationFrame(rotateWheel);
     }
     rotateWheel();
@@ -137,19 +160,29 @@ function spinWheelOnce() {
 
 // 💸 Withdraw
 withdrawBtn.addEventListener("click", async () => {
-  const amount = parseInt(prompt("Enter amount to withdraw (min 1000 PKR):"), 10);
-  if (!amount || amount < 1000) { showStatus("⚠️ Minimum withdraw is 1000 PKR.", "error"); return; }
-  if (amount > balance) { showStatus("⚠️ Not enough balance!", "error"); return; }
+  const amount = parseInt(
+    prompt("Enter amount to withdraw (min 1000 PKR):"),
+    10
+  );
+  if (!amount || amount < 1000) {
+    showStatus("⚠️ Minimum withdraw is 1000 PKR.", "error");
+    return;
+  }
+  if (amount > balance) {
+    showStatus("⚠️ Not enough balance!", "error");
+    return;
+  }
 
   try {
     await addDoc(collection(db, "withdrawals"), {
       uid: currentUser.uid,
       amount,
       status: "pending",
-      createdAt: serverTimestamp()
+      createdAt: serverTimestamp(),
     });
     balance -= amount;
-    updateUserInfo(); saveBalance();
+    updateUserInfo();
+    await saveBalance();
     showStatus("✅ Withdraw request submitted!", "success");
   } catch (err) {
     console.error("Withdraw error:", err);
@@ -175,6 +208,7 @@ onAuthStateChanged(auth, async (user) => {
     }
     updateUserInfo();
 
+    // Realtime updates
     onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         balance = docSnap.data().balance || 0;
@@ -184,7 +218,7 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// ✅ Status message system (same as index.html)
+// ✅ Status message system
 function showStatus(message, type) {
   let statusBox = document.getElementById("statusMessage");
   if (!statusBox) {
@@ -203,7 +237,8 @@ function showStatus(message, type) {
 
   statusBox.textContent = message;
   statusBox.style.display = "block";
-  statusBox.style.background = type === "success" ? "#28a745" : "#dc3545";
+  statusBox.style.background =
+    type === "success" ? "#28a745" : "#dc3545";
   statusBox.style.color = "#fff";
 
   setTimeout(() => {
