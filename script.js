@@ -236,5 +236,5 @@ function showStatus(message, type) {
 
   setTimeout(() => {
     statusBox.style.display = "none";
-  }, 00);
+  }, 100);
 }
