@@ -81,7 +81,7 @@ spinBtn.addEventListener("click", async () => {
 
   let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
-  let spinTimeTotal = 1500; // 🔥 shorter duration = faster result
+  let spinTimeTotal = 3000; // 🔥 shorter duration = faster result
 
   function rotateWheel() {
     spinTime += 16; // 🔥 16ms = ~60 FPS (smoother, no lag)
@@ -137,7 +137,7 @@ function spinWheelOnce() {
   return new Promise((resolve) => {
     let spinAngle = Math.random() * 360 + 360 * 5;
     let spinTime = 0;
-    let spinTimeTotal = 1000;
+    let spinTimeTotal = 100;
 
     function rotateWheel() {
       spinTime += 30;
