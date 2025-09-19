@@ -1,5 +1,3 @@
-/* style.css */
-
 /* Global */
 body {
   margin: 0;
@@ -42,8 +40,15 @@ button:hover {
   align-items: center;
   margin-top: 20px;
 }
-canvas { border-radius: 50%; }
 
+/* 🎡 Canvas */
+canvas {
+  border-radius: 50%;
+  display: block;
+  margin: auto;
+}
+
+/* Spin Buttons Group */
 .button-group {
   display: flex;
   gap: 15px;
