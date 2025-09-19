@@ -51,7 +51,7 @@ function drawWheel(rotation = 0) {
   ctx.translate(canvas.width / 2, canvas.height / 2);
   // pointer rotates same as wheel so it always points correctly
   ctx.rotate(rotation);
-  ctx.drawImage(pointerImg, -50, -canvas.height / 2 + 50, 300, 300); // adjust size & position if needed
+  ctx.drawImage(pointerImg, -50, -canvas.height / 2 + 50, 200, 300); // adjust size & position if needed
   ctx.restore();
 }
 
