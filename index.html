@@ -12,7 +12,6 @@
     import { app } from "./firebase-config.js";
 
     const auth = getAuth(app);
-
     onAuthStateChanged(auth, (user) => {
       if (!user) {
         window.location.href = "auth.html";
@@ -24,7 +23,9 @@
   <header>
     <h2>🎡 One-Wheely 🎡</h2>
     <div>
+      <!-- ✅ Balance + User Info -->
       <span id="balanceDisplay" style="margin-right:15px; font-weight:bold; color:green;">Balance: 0 PKR</span>
+      <span id="userInfo" style="margin-right:15px; font-weight:bold; color:blue;">...</span>
       <button id="addBalanceBtn">Add Balance</button>
       <button id="withdrawBtn">Withdraw</button>
       <button id="logoutBtn">Logout</button>
@@ -40,8 +41,8 @@
   </div>
 
   <!-- Game Result Popup -->
-  <div id="popup">
-    <div id="popupContent">
+  <div id="popup" style="display:none; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000;">
+    <div id="popupContent" style="background:#fff; padding:20px; border-radius:10px; text-align:center;">
       <p id="prizeText"></p>
       <button onclick="closePopup()">OK</button>
     </div>
@@ -50,8 +51,6 @@
   <!-- Add Balance Popup -->
   <div id="paymentInstructions" style="display:none; text-align:center; max-width:500px; width:90%; padding:30px; border-radius:15px; background:#fff; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:1000;">
     <h3>💳 Payment Instructions</h3>
-
-    <!-- Input fields -->
     <div style="margin-bottom:15px; text-align:left;">
       <label>Acc. Holder Name:</label><br>
       <input type="text" id="inputAccHolder" placeholder="Enter your name" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
@@ -62,27 +61,22 @@
       <label>Amount (min 200 PKR):</label><br>
       <input type="number" id="inputAmount" placeholder="200" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;" min="200">
     </div>
-
     <hr>
-
-    <!-- Old instructions -->
     <div id="paymentDetails" style="text-align:left;">
       <p><b>User UID:</b> <span id="userID">...</span></p>
       <p style="color:red; font-weight:bold; margin-top:5px;">
-        Note: When sending payment via Easypaisa or JazzCash, make sure to enter this User UID in the message/remarks field. Payment will not be verified without it.
+        Note: Enter this UID in payment remarks. Without it, payment won’t be verified.
       </p>
       <p><b>Payment Details:</b></p>
       <p>Easypaisa</p>
       <p>Acc. Holder Name: <b>Adil Hayyat</b></p>
       <p>Acc. Number: <b>03127196480</b></p>
-      <p style="color:green;">✅ After payment verification, your balance will be updated automatically.</p>
+      <p style="color:green;">✅ Balance will update automatically after verification.</p>
     </div>
-    <p id="statusMessage" style="display:none; font-weight:bold; margin-top:10px;"></p>
-
     <button id="doneBtn" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
   </div>
 
-  <!-- Success/Error Message -->
+  <!-- Status message -->
   <div id="statusMessage" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 20px; border-radius:8px; font-weight:bold; z-index:2000;"></div>
 
   <!-- Firebase configs -->
@@ -90,99 +84,5 @@
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
-
-  <!-- Popup + Firestore Logic -->
-  <script type="module">
-    import { auth, db } from "./firebase-config.js";
-    import { addDoc, collection, serverTimestamp, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
-
-    const addBalanceBtn = document.getElementById('addBalanceBtn');
-    const paymentPopup = document.getElementById('paymentInstructions');
-    const doneBtn = document.getElementById('doneBtn');
-    const userIDSpan = document.getElementById('userID');
-    const statusMessage = document.getElementById('statusMessage');
-    const balanceDisplay = document.getElementById('balanceDisplay');
-
-    const inputAccHolder = document.getElementById('inputAccHolder');
-    const inputAccNumber = document.getElementById('inputAccNumber');
-    const inputAmount = document.getElementById('inputAmount');
-
-    // 🔹 Real-time balance listener
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        const userRef = doc(db, "users", user.uid);
-        onSnapshot(userRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const balance = docSnap.data().balance || 0;
-            balanceDisplay.textContent = `Balance: ${balance} PKR`;
-          }
-        });
-      }
-    });
-
-    // Show popup directly (no mini tab)
-    addBalanceBtn.addEventListener('click', async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      userIDSpan.textContent = user.uid;
-      paymentPopup.style.display = "block";
-    });
-
-    // Helper: Show status message
-    function showStatus(msg, color) {
-      statusMessage.textContent = msg;
-      statusMessage.style.background = color === "green" ? "#d4edda" : "#f8d7da";
-      statusMessage.style.color = color === "green" ? "#155724" : "#721c24";
-      statusMessage.style.border = `1px solid ${color === "green" ? "#c3e6cb" : "#f5c6cb"}`;
-      statusMessage.style.display = "block";
-
-      setTimeout(() => {
-        statusMessage.style.display = "none";
-      }, 5000);
-    }
-
-    // Done button → save transaction + close popup
-    doneBtn.addEventListener('click', async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      const accHolder = inputAccHolder.value.trim();
-      const accNumber = inputAccNumber.value.trim();
-      const amount = parseInt(inputAmount.value);
-
-      if (!accHolder || !accNumber || isNaN(amount) || amount < 200) {
-        showStatus("⚠️ Please fill all fields correctly. Minimum amount is 200 PKR.", "red");
-        return;
-      }
-
-      const reference = `REF-${user.uid.slice(0,6)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-
-      try {
-        await addDoc(collection(db, "transactions"), {
-          uid: user.uid,
-          amount: amount,
-          reference,
-          method: "Easypaisa",
-          accountReceiver: accNumber, // ✅ user ka number store hoga
-          accountHolder: accHolder,
-          status: "pending",
-          createdAt: serverTimestamp()
-        });
-
-        paymentPopup.style.display = "none";
-        showStatus("✅ Process complete! Payment will add within 30 Min.", "green");
-
-        // Clear fields
-        inputAccHolder.value = "";
-        inputAccNumber.value = "";
-        inputAmount.value = "";
-
-      } catch (err) {
-        console.error("Transaction error:", err);
-        showStatus("❌ Failed to add transaction.", "red");
-      }
-    });
-  </script>
 </body>
 </html>
