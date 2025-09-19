@@ -32,37 +32,47 @@ wheelImg.src = "./wheel.png";
 
 // 🎯 Prize sectors
 const prizes = ["100", "💀", "10", "💀", "00", "💀", "1000", "💀"];
-const sectorCount = prizes.length;
-const sectorSize = 360 / sectorCount;
 const sectors = prizes.map((prize, index) => {
-  const start = index * sectorSize;
-  const end = start + sectorSize;
-  const center = start + sectorSize / 2;
-  return { prize, start, end, center };
+  const start = index * (360 / prizes.length);
+  const end = start + 360 / prizes.length;
+  return { prize, start, end };
 });
 
 // Draw wheel
-function drawWheel(rotation = 0, redDotAngle = null) {
+function drawWheel(rotation = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Wheel
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotation);
   ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
+}
 
-  // Red dot if angle given
-  if (redDotAngle !== null) {
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate((redDotAngle * Math.PI) / 180);
-    ctx.fillStyle = "red";
-    ctx.beginPath();
-    ctx.arc(0, -canvas.height / 2 + 20, 10, 0, 2 * Math.PI);
-    ctx.fill();
-    ctx.restore();
-  }
+// Draw red dot at prize center
+function drawRedDot(rotationAngle) {
+  // Convert wheel rotation to 0-360°
+  let degrees = (rotationAngle * 180 / Math.PI) % 360;
+  if (degrees < 0) degrees += 360;
+
+  // Find sector where wheel stopped
+  const sector = sectors.find(s => {
+    const start = s.start;
+    const end = s.end;
+    return degrees >= start && degrees < end;
+  }) || sectors[0];
+
+  // Red dot at sector center
+  const centerAngle = (sector.start + sector.end) / 2;
+
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate(centerAngle * Math.PI / 180);
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(0, -canvas.height / 2 + 20, 10, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
 }
 
 // Initial draw
@@ -107,41 +117,35 @@ async function spinWheel(cost = 10) {
   await saveBalance();
 
   return new Promise((resolve) => {
-    let spinAngle = Math.random() * 360 + 360 * 5;
+    let spinAngle = Math.random() * 360 + 360 * 5; // total rotation
     let spinTime = 0;
-    const spinTimeTotal = 3000;
-    let redDotAngle = null;
+    let spinTimeTotal = 3000;
 
     function rotateWheel() {
       spinTime += 16;
       if (spinTime >= spinTimeTotal) {
         const finalAngle = spinAngle % 360;
+        const sectorIndex = Math.floor((360 - finalAngle) / (360 / prizes.length)) % prizes.length;
+        const prize = prizes[sectorIndex];
 
-        // Find sector
-        const sector = sectors.find(s => finalAngle >= s.start && finalAngle < s.end) || sectors[0];
-        const prize = sector.prize;
-
-        // Update balance
         if (prize !== "💀") {
           balance += parseInt(prize) || 0;
           updateUserInfo();
           saveBalance();
         }
 
-        redDotAngle = sector.center; // red dot at sector center
-        drawWheel((spinAngle * Math.PI) / 180, redDotAngle);
+        drawWheel(spinAngle * Math.PI / 180);
+        drawRedDot(spinAngle * Math.PI / 180); // Red dot at prize center
         resolve(prize);
         return;
       }
 
-      const easeOut = (t, b, c, d) =>
-        c * ((t = t / d - 1) * t * t + 1) + b;
-
+      const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
       const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-      drawWheel((angleCurrent * Math.PI) / 180, redDotAngle);
+
+      drawWheel(angleCurrent * Math.PI / 180);
       requestAnimationFrame(rotateWheel);
     }
-
     rotateWheel();
   });
 }
