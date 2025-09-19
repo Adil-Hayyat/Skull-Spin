@@ -261,9 +261,37 @@ if (addBalanceBtn && doneBtn && paymentPopup) {
     paymentPopup.style.display = "block";
   });
 
-  // Close popup
-  doneBtn.addEventListener("click", () => {
+  // Close + Save transaction
+  doneBtn.addEventListener("click", async () => {
     paymentPopup.style.display = "none";
-    showStatus("✅ Process complete. Payment will add within 30 min.", "success");
+
+    const amount = parseInt(prompt("Enter deposit amount (min 100 PKR):"), 10);
+
+    if (!amount || amount < 100) {
+      showStatus("⚠️ Minimum deposit is 100 PKR.", "error");
+      return;
+    }
+
+    if (!currentUser) {
+      showStatus("⚠️ Please login first!", "error");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "payments"), {
+        uid: currentUser.uid,
+        email: currentUser.email,
+        method: "Easypaisa", // 🔥 popup details ke hisaab se
+        accountNumber: "03123456789", // 🔥 yaha apna receiver account number likhna
+        amount,
+        status: "pending",
+        createdAt: serverTimestamp(),
+      });
+
+      showStatus("✅ Deposit request submitted! Admin will confirm soon.", "success");
+    } catch (err) {
+      console.error("Payment error:", err);
+      showStatus("❌ Failed to submit payment request.", "error");
+    }
   });
 }
