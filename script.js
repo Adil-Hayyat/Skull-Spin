@@ -26,19 +26,42 @@ const logoutBtn = document.getElementById("logoutBtn");
 let balance = 0;
 let currentUser = null;
 
-// 🎡 Wheel image
+// 🎡 Wheel & pointer images
 let wheelImg = new Image();
 wheelImg.src = "./wheel.png";
+
+let pointerImg = new Image();
+pointerImg.src = "./pointer.png";
+
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
 
 function drawWheel(rotation = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw wheel
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotation);
   ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
+
+  // Draw pointer at center top
+  ctx.drawImage(pointerImg, canvas.width/2 - pointerImg.width/2, canvas.height/2 - pointerImg.height/2, pointerImg.width, pointerImg.height);
 }
+
+// Draw red dot at stop angle
+function drawRedDot(angle) {
+  ctx.save();
+  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.rotate((angle * Math.PI) / 180);
+  ctx.fillStyle = "red";
+  ctx.beginPath();
+  ctx.arc(0, -canvas.height / 2 + 20, 10, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
+}
+
+// Initial draw
 wheelImg.onload = () => drawWheel(0);
 
 // 🎁 Popup
@@ -69,79 +92,23 @@ async function saveBalance() {
   }
 }
 
-// 🎡 Single Spin
-spinBtn.addEventListener("click", async () => {
-  if (balance < 10) {
+// Spin function
+async function spinWheel(cost = 10) {
+  if (balance < cost) {
     showStatus("⚠️ Not enough balance!", "error");
-    return;
+    return null;
   }
-  balance -= 10;
+  balance -= cost;
   updateUserInfo();
   await saveBalance();
 
-  let spinAngle = Math.random() * 360 + 360 * 5;
-  let spinTime = 0;
-  let spinTimeTotal = 3000;
-
-  function rotateWheel() {
-    spinTime += 16;
-    if (spinTime >= spinTimeTotal) {
-      const degrees = spinAngle % 360;
-      const sectorSize = 360 / prizes.length;
-      const index = Math.floor((360 - degrees) / sectorSize) % prizes.length;
-      const prize = prizes[index];
-
-      if (prize !== "💀" && prize !== "00") {
-        balance += parseInt(prize);
-        updateUserInfo();
-        saveBalance();
-      }
-      showPrize("🎁 You got: " + prize);
-      return;
-    }
-
-    const easeOut = (t, b, c, d) =>
-      c * ((t = t / d - 1) * t * t + 1) + b;
-
-    const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
-    drawWheel((angleCurrent * Math.PI) / 180);
-
-    requestAnimationFrame(rotateWheel);
-  }
-  rotateWheel();
-});
-
-// 🎡 Multi-spin
-multiSpinBtn.addEventListener("click", async () => {
-  if (balance < 50) {
-    showStatus("⚠️ Not enough balance!", "error");
-    return;
-  }
-
-  balance -= 50;
-  updateUserInfo();
-  await saveBalance();
-
-  const rewards = [];
-
-  // Sequential spins
-  for (let i = 0; i < 5; i++) {
-    const prize = await spinWheelOnce();
-    rewards.push(prize);
-  }
-
-  showPrize("🎁 You got:\n" + rewards.join(", "));
-});
-
-
-function spinWheelOnce() {
   return new Promise((resolve) => {
     let spinAngle = Math.random() * 360 + 360 * 5;
     let spinTime = 0;
-    let spinTimeTotal = 10000;
+    let spinTimeTotal = 3000;
 
     function rotateWheel() {
-      spinTime += 30;
+      spinTime += 16;
       if (spinTime >= spinTimeTotal) {
         const degrees = spinAngle % 360;
         const sectorSize = 360 / prizes.length;
@@ -153,17 +120,48 @@ function spinWheelOnce() {
           updateUserInfo();
           saveBalance();
         }
+
+        drawWheel((spinAngle * Math.PI) / 180);
+        drawRedDot(degrees);
         resolve(prize);
         return;
       }
-      const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
+
+      const easeOut = (t, b, c, d) =>
+        c * ((t = t / d - 1) * t * t + 1) + b;
+
       const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
       drawWheel((angleCurrent * Math.PI) / 180);
+
       requestAnimationFrame(rotateWheel);
     }
     rotateWheel();
   });
 }
+
+// 🎡 Single Spin
+spinBtn.addEventListener("click", async () => {
+  const prize = await spinWheel(10);
+  if (prize) showPrize("🎁 You got: " + prize);
+});
+
+// 🎡 Multi-spin (5 times with animation for each)
+multiSpinBtn.addEventListener("click", async () => {
+  if (balance < 50) {
+    showStatus("⚠️ Not enough balance!", "error");
+    return;
+  }
+  balance -= 50;
+  updateUserInfo();
+  await saveBalance();
+
+  const rewards = [];
+  for (let i = 0; i < 5; i++) {
+    const prize = await spinWheel(0); // already deducted 50
+    if (prize) rewards.push(prize);
+  }
+  showPrize("🎁 You got:\n" + rewards.join(", "));
+});
 
 // 💸 Withdraw
 withdrawBtn.addEventListener("click", async () => {
