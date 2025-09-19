@@ -26,36 +26,20 @@ const logoutBtn = document.getElementById("logoutBtn");
 let balance = 0;
 let currentUser = null;
 
-// 🎡 Wheel and Pointer images
+// 🎡 Wheel image
 let wheelImg = new Image();
 wheelImg.src = "./wheel.png";
-
-let pointerImg = new Image();
-pointerImg.src = "./pointer.png";
-
 const prizes = ["00", "💀", "10", "💀", "100", "💀", "1000", "💀"];
 
-// Draw wheel + pointer together
 function drawWheel(rotation = 0) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw wheel
   ctx.save();
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate(rotation);
   ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
   ctx.restore();
-
-  // Draw pointer on top (overlay)
-  ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  // pointer rotates same as wheel so it always points correctly
-  ctx.rotate(rotation);
-  ctx.drawImage(pointerImg, -50, -canvas.height / 2 + 50, 200, 300); // adjust size & position if needed
-  ctx.restore();
 }
-
-wheelImg.onload = pointerImg.onload = () => drawWheel(0);
+wheelImg.onload = () => drawWheel(0);
 
 // 🎁 Popup
 function showPrize(prize) {
@@ -116,7 +100,9 @@ spinBtn.addEventListener("click", async () => {
       return;
     }
 
-    const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
+    const easeOut = (t, b, c, d) =>
+      c * ((t = t / d - 1) * t * t + 1) + b;
+
     const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
     drawWheel((angleCurrent * Math.PI) / 180);
 
@@ -140,6 +126,7 @@ multiSpinBtn.addEventListener("click", async () => {
     spinPromises.push(spinWheelOnce());
   }
   const rewards = await Promise.all(spinPromises);
+
   showPrize("🎁 You got:\n" + rewards.join(", "));
 });
 
@@ -189,6 +176,7 @@ withdrawBtn.addEventListener("click", async () => {
   try {
     await addDoc(collection(db, "withdrawals"), {
       uid: currentUser.uid,
+      email: currentUser.email,
       amount,
       status: "pending",
       createdAt: serverTimestamp(),
@@ -279,7 +267,6 @@ if (addBalanceBtn && doneBtn && paymentPopup) {
       showStatus("⚠️ Minimum deposit is 200 PKR.", "error");
       return;
     }
-
     if (!currentUser) {
       showStatus("⚠️ Please login first!", "error");
       return;
