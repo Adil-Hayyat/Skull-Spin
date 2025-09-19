@@ -1,10 +1,8 @@
 // script.js (FULL UPDATED FILE)
-// Changes in this version:
-// - Withdraw modal updated to show "Enter Account Details", Acc. Holder Name, Acc. Number, Amount fields.
-// - On submit: checks if user already has a pending withdrawal; if yes shows error and prevents submission.
-// - Balance is NOT deducted when creating a withdrawal request. Balance will be deducted only when admin sets status = "approved" (server/admin flow).
-// - Uses Firestore query to check existing pending withdrawals.
-// - All other behavior (wheel, red dot, spin, multi-spin, add-balance modal etc.) kept as before.
+// - Adds add-balance popup handling (Done button) integrated with Firestore
+// - Withdraw modal updated (no prompt), wheel/spin/red-dot behavior preserved
+// - Multi-spin sequential, single spin works, balance sync saved
+// - Admin approval flow expected for payments/withdrawals
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -31,11 +29,21 @@ const ctx = canvas.getContext("2d");
 canvas.width = canvas.width || 500;
 canvas.height = canvas.height || 500;
 
+// Buttons / DOM references
 const spinBtn = document.getElementById("spinBtn");
 const multiSpinBtn = document.getElementById("multiSpinBtn");
 const userInfo = document.getElementById("userInfo");
 const withdrawBtn = document.getElementById("withdrawBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+
+// Add-balance popup elements (from your index.html)
+const addBalanceBtn = document.getElementById("addBalanceBtn");
+const paymentPopup = document.getElementById("paymentInstructions");
+const doneBtn = document.getElementById("doneBtn");
+const userIDSpan = document.getElementById("userID");
+const inputAccHolder = document.getElementById("inputAccHolder");
+const inputAccNumber = document.getElementById("inputAccNumber");
+const inputAmount = document.getElementById("inputAmount");
 
 // Status box helper exists in DOM? If not, we'll create on demand.
 let balance = 0;
@@ -45,7 +53,7 @@ let currentUser = null;
 const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
 
-// Prize definitions and sectors
+// Prize config (must match graphic clockwise from top)
 const prizes = ["100", "💀", "10", "💀", "00", "💀", "1000", "💀"];
 const SECTOR_COUNT = prizes.length;
 const SECTOR_SIZE = 360 / SECTOR_COUNT; // e.g. 45°
@@ -203,20 +211,82 @@ multiSpinBtn?.addEventListener("click", async () => {
   }
 });
 
+// -------- Add-balance popup handling --------
+function ensureAddBalancePopupListeners() {
+  // If elements missing, skip
+  if (!addBalanceBtn || !paymentPopup || !doneBtn || !userIDSpan) return;
+
+  // Open popup directly
+  addBalanceBtn.addEventListener("click", async () => {
+    const user = currentUser;
+    if (!user) {
+      showStatus("⚠️ Please login first!", "error");
+      return;
+    }
+    userIDSpan.textContent = user.uid;
+    // show popup
+    paymentPopup.style.display = "block";
+  });
+
+  // Done button
+  doneBtn.addEventListener("click", async () => {
+    const user = currentUser;
+    if (!user) {
+      showStatus("⚠️ Please login first!", "error");
+      return;
+    }
+
+    const accHolder = inputAccHolder ? inputAccHolder.value.trim() : "";
+    const accNumber = inputAccNumber ? inputAccNumber.value.trim() : "";
+    const amount = inputAmount ? parseInt(inputAmount.value, 10) : NaN;
+
+    if (!accHolder || !accNumber || isNaN(amount) || amount < 200) {
+      showStatus("⚠️ Please fill all fields correctly. Minimum amount is 200 PKR.", "error");
+      return;
+    }
+
+    // Disable button while sending
+    doneBtn.disabled = true;
+    doneBtn.textContent = "Submitting...";
+
+    try {
+      await addDoc(collection(db, "payments"), {
+        uid: user.uid,
+        email: user.email || "",
+        accountHolder: accHolder,
+        accountNumber: accNumber,
+        amount,
+        method: "Easypaisa",
+        status: "pending",
+        createdAt: serverTimestamp()
+      });
+
+      // Close popup and clear inputs
+      paymentPopup.style.display = "none";
+      if (inputAccHolder) inputAccHolder.value = "";
+      if (inputAccNumber) inputAccNumber.value = "";
+      if (inputAmount) inputAmount.value = "";
+
+      showStatus("✅ Payment request submitted! Payment will be added after admin verification.", "success");
+    } catch (err) {
+      console.error("Payment submission error:", err);
+      showStatus("❌ Failed to submit payment request.", "error");
+    } finally {
+      doneBtn.disabled = false;
+      doneBtn.textContent = "Done";
+    }
+  });
+
+  // If user clicks outside popup to close (optional): you can add this if needed
+  window.addEventListener("click", (e) => {
+    if (!paymentPopup) return;
+    if (e.target === paymentPopup) {
+      paymentPopup.style.display = "none";
+    }
+  });
+}
+
 // -------- Withdraw modal (updated) --------
-/**
- * Modal now includes:
- * - Title: "Enter Account Details"
- * - Acc. Holder's Name (input)
- * - Acc. Number (input)
- * - Amount (input, min 1000)
- *
- * On submit:
- * - Checks if current user already has a pending withdrawal (query)
- * - If pending exists => show error, DO NOT create new withdrawal
- * - If okay => create withdrawal doc with status "pending" (do NOT deduct balance here)
- * - Balance remains unchanged until admin approves (server/admin action will deduct or update user balance)
- */
 function ensureWithdrawModal() {
   if (document.getElementById("withdrawModal")) return;
 
@@ -283,7 +353,6 @@ function ensureWithdrawModal() {
     const value = parseInt(input.value, 10);
     const errDiv = document.getElementById("withdrawError");
 
-    // validation
     if (!holder) {
       errDiv.textContent = "⚠️ Please enter account holder's name.";
       errDiv.style.display = "block";
@@ -326,7 +395,6 @@ function ensureWithdrawModal() {
       return;
     }
 
-    // proceed to create withdrawal request (DO NOT deduct balance here)
     const submitBtn = document.getElementById("withdrawSubmitBtn");
     submitBtn.disabled = true;
     submitBtn.textContent = "Submitting...";
@@ -342,7 +410,7 @@ function ensureWithdrawModal() {
         createdAt: serverTimestamp()
       });
 
-      // Do NOT deduct balance here. Admin must approve and update user's balance.
+      // Do not deduct balance here — admin approval should update user balance.
       hideWithdrawModal();
       showStatus(`✅ Withdraw request submitted for ${value} PKR. Wait for admin approval.`, "success");
     } catch (err) {
@@ -359,7 +427,6 @@ function ensureWithdrawModal() {
     if (e.key === "Escape") hideWithdrawModal();
   });
 }
-
 function showWithdrawModal() {
   ensureWithdrawModal();
   const m = document.getElementById("withdrawModal");
@@ -374,14 +441,11 @@ function showWithdrawModal() {
   if (a) a.value = "";
   if (errDiv) { errDiv.style.display = "none"; errDiv.textContent = ""; }
 }
-
 function hideWithdrawModal() {
   const m = document.getElementById("withdrawModal");
   if (!m) return;
   m.style.visibility = "hidden";
 }
-
-// open withdraw modal
 withdrawBtn?.addEventListener("click", async () => {
   if (!currentUser) {
     showStatus("⚠️ Please login first!", "error");
@@ -393,7 +457,6 @@ withdrawBtn?.addEventListener("click", async () => {
 // -------- Logout, firestore sync --------
 logoutBtn?.addEventListener("click", logout);
 
-// Realtime user balance sync
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
@@ -459,3 +522,7 @@ function showStatus(message, type) {
 wheelImg.onload = () => {
   drawWheel(0);
 };
+
+// initialize listeners that depend on DOM elements
+ensureAddBalancePopupListeners();
+ensureWithdrawModal();
