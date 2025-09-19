@@ -322,7 +322,7 @@ function ensureWithdrawModal() {
     </div>
 
     <div style="margin-bottom:10px;">
-      <label style="font-weight:600;">Acc. Number</label>
+      <label style="font-weight:600;">Easypaisa Acc. Number</label>
       <input id="withdrawNumberInput" type="text" placeholder="e.g. 03XXXXXXXXX" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
     </div>
 
