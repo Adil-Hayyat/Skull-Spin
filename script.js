@@ -70,7 +70,7 @@ async function saveBalance() {
 }
 
 // 🎡 Single Spin
-spinBtn.addEventListener("click", () => {
+spinBtn.addEventListener("click", async () => {
   if (balance < 10) {
     showStatus("⚠️ Not enough balance!", "error");
     return;
@@ -81,10 +81,10 @@ spinBtn.addEventListener("click", () => {
 
   let spinAngle = Math.random() * 360 + 360 * 5;
   let spinTime = 0;
-  let spinTimeTotal = 3000;
+  let spinTimeTotal = 1500; // 🔥 shorter duration = faster result
 
   function rotateWheel() {
-    spinTime += 30;
+    spinTime += 16; // 🔥 16ms = ~60 FPS (smoother, no lag)
     if (spinTime >= spinTimeTotal) {
       const degrees = spinAngle % 360;
       const sectorSize = 360 / prizes.length;
@@ -99,13 +99,18 @@ spinBtn.addEventListener("click", () => {
       showPrize("🎁 You got: " + prize);
       return;
     }
-    const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
+
+    const easeOut = (t, b, c, d) =>
+      c * ((t = t / d - 1) * t * t + 1) + b;
+
     const angleCurrent = easeOut(spinTime, 0, spinAngle, spinTimeTotal);
     drawWheel((angleCurrent * Math.PI) / 180);
+
     requestAnimationFrame(rotateWheel);
   }
   rotateWheel();
 });
+
 
 // 🎡 Multi-spin
 multiSpinBtn.addEventListener("click", async () => {
