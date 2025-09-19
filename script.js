@@ -117,18 +117,22 @@ multiSpinBtn.addEventListener("click", async () => {
     showStatus("⚠️ Not enough balance!", "error");
     return;
   }
+
   balance -= 50;
   updateUserInfo();
   await saveBalance();
 
-  const spinPromises = [];
+  const rewards = [];
+
+  // Sequential spins
   for (let i = 0; i < 5; i++) {
-    spinPromises.push(spinWheelOnce());
+    const prize = await spinWheelOnce();
+    rewards.push(prize);
   }
-  const rewards = await Promise.all(spinPromises);
 
   showPrize("🎁 You got:\n" + rewards.join(", "));
 });
+
 
 function spinWheelOnce() {
   return new Promise((resolve) => {
