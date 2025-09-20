@@ -40,7 +40,7 @@ function showStatus(msg, color = "red") {
 
 /** Signup handler */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("Username")?.value || "").trim();
+  const username = document.getElementById("Username").value.trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
@@ -58,7 +58,7 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   }
 
   try {
-    // Check username uniqueness (search users collection for same username)
+    // 🔍 Check username uniqueness
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("username", "==", username));
     const existing = await getDocs(q);
@@ -67,23 +67,23 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
       return;
     }
 
-    // Create auth account
+    // ✅ Create Firebase Auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Save user profile in Firestore (users/{uid})
+    // ✅ Save user profile in Firestore
     const userRef = doc(db, "users", user.uid);
     await setDoc(userRef, {
-      username,
-      email: user.email,
-      balance: 0,
+      username,          // 🔴 username save hoga
+      email: user.email, // email bhi save hoga
+      balance: 0,        // default balance
       createdAt: serverTimestamp()
     });
 
     showStatus("✅ Signup successful! Redirecting...", "green");
     setTimeout(() => { window.location.href = "index.html"; }, 1200);
   } catch (error) {
-    // Map common errors to friendlier messages
+    // 🔄 Error handling
     const code = error.code || "";
     if (code === "auth/email-already-in-use") {
       showStatus("❌ Email already in use. Try logging in.", "red");
@@ -95,6 +95,7 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     console.error("Signup error:", error);
   }
 });
+
 
 /** Login handler */
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
