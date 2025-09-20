@@ -112,7 +112,7 @@ async function saveBalance() {
 }
 function updateUserInfoDisplay() {
   if (userInfo && currentUser) {
-    userInfo.textContent = `${currentUser.email} | Balance: ${balance} PKR`;
+    userInfo.textContent = `${currentUser.email} | Rs: ${balance}`;
   }
 }
 
