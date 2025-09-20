@@ -3,44 +3,34 @@ import { auth, db } from "./firebase-config.js";
 import { 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
+  signOut
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+import { doc, setDoc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /**
  * Helper: Show status messages (success/error)
- * @param {string} msg - Message text
- * @param {string} color - "green" or "red"
  */
 function showStatus(msg, color) {
   let statusBox = document.getElementById("authStatus");
   if (!statusBox) {
     statusBox = document.createElement("p");
     statusBox.id = "authStatus";
-    statusBox.style.fontWeight = "bold";
-    statusBox.style.marginTop = "10px";
-    statusBox.style.textAlign = "center";
     document.body.appendChild(statusBox);
   }
-
   statusBox.textContent = msg;
   statusBox.style.color = color;
   statusBox.style.display = "block";
-
-  // Auto-hide after 5 seconds
-  setTimeout(() => {
-    statusBox.style.display = "none";
-  }, 5000);
+  setTimeout(() => { statusBox.style.display = "none"; }, 5000);
 }
 
 // ✅ Signup
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
 
-  if (!email || !password) {
-    showStatus("⚠️ Please enter email and password.", "red");
+  if (!username || !email || !password) {
+    showStatus("⚠️ Username, Email, and Password are required.", "red");
     return;
   }
 
@@ -48,21 +38,15 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Naya user document banega
-    const userRef = doc(db, "users", user.uid);
-    const docSnap = await getDoc(userRef);
-
-    if (!docSnap.exists()) {
-      await setDoc(userRef, {
-        email: user.email,
-        balance: 0
-      });
-    }
+    // Firestore user doc
+    await setDoc(doc(db, "users", user.uid), {
+      username,
+      email,
+      balance: 0
+    });
 
     showStatus("✅ Signup successful! Redirecting...", "green");
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 2000);
+    setTimeout(() => { window.location.href = "index.html"; }, 2000);
   } catch (error) {
     showStatus("❌ " + error.message, "red");
   }
@@ -70,34 +54,54 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
 
 // ✅ Login
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
 
-  if (!email || !password) {
-    showStatus("⚠️ Please enter email and password.", "red");
+  if (!username || !email || !password) {
+    showStatus("⚠️ All fields are required.", "red");
     return;
   }
 
   try {
+    // 🔍 Find user by username
+    const q = query(collection(db, "users"), where("username", "==", username));
+    const snapshot = await getDocs(q);
+
+    if (snapshot.empty) {
+      showStatus("❌ Invalid User", "red");
+      return;
+    }
+
+    let matchedUser = null;
+    snapshot.forEach(docSnap => { matchedUser = docSnap.data(); });
+
+    // Username exists → now check email
+    if (matchedUser.email !== email) {
+      showStatus("❌ No Account Found, Please Sign-Up", "red");
+      return;
+    }
+
+    // Try Firebase Auth login (this checks password)
     await signInWithEmailAndPassword(auth, email, password);
+
     showStatus("✅ Login successful! Redirecting...", "green");
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 2000);
+    setTimeout(() => { window.location.href = "index.html"; }, 2000);
+
   } catch (error) {
-    showStatus("❌ " + error.message, "red");
+    // Firebase password mismatch → catch here
+    if (error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+      showStatus("❌ Invalid Password", "red");
+    } else if (error.code === "auth/user-not-found") {
+      showStatus("❌ No Account Found, Please Sign-Up", "red");
+    } else {
+      showStatus("❌ " + error.message, "red");
+    }
   }
 });
 
-// ✅ Logout (used inside index.html)
+// ✅ Logout
 export async function logout() {
   await signOut(auth);
   window.location.href = "auth.html";
 }
-
-// ✅ Auth check
-onAuthStateChanged(auth, (user) => {
-  if (!user && window.location.pathname.endsWith("index.html")) {
-    window.location.href = "auth.html";
-  }
-});
