@@ -39,7 +39,7 @@ function showStatus(msg, color = "red") {
 
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("Username")?.value || "").trim();
+  const username = (document.getElementById("username")?.value || "").trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
@@ -92,7 +92,7 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
 
 /** ---------------- LOGIN ---------------- */
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("Username")?.value || "").trim();
+  const username = (document.getElementById("username")?.value || "").trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
