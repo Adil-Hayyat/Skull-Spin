@@ -1,5 +1,5 @@
-// auth.js (updated)
-// Handles: signup (username saved), login (username validation), logout, auth check
+// auth.js (final)
+// Signup (username save), Login (username validate), Logout, Auth check
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -31,34 +31,29 @@ function showStatus(msg, color = "red") {
   statusBox.textContent = msg;
   statusBox.style.color = color;
   statusBox.style.display = "block";
-  // Auto-hide after 5s
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
     statusBox.style.display = "none";
   }, 5000);
 }
 
-/** Signup handler */
+/** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
-  const username = document.getElementById("Username").value.trim();
+  const username = (document.getElementById("Username")?.value || "").trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
-  if (!username) {
-    showStatus("⚠️ Please enter a username.", "red");
+  if (!username || !email || !password) {
+    showStatus("⚠️ Please enter username, email and password.", "red");
     return;
   }
-  if (!email) {
-    showStatus("⚠️ Please enter an email.", "red");
-    return;
-  }
-  if (!password || password.length < 6) {
+  if (password.length < 6) {
     showStatus("⚠️ Password must be at least 6 characters.", "red");
     return;
   }
 
   try {
-    // 🔍 Check username uniqueness
+    // 🔍 check username uniqueness
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("username", "==", username));
     const existing = await getDocs(q);
@@ -67,23 +62,22 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
       return;
     }
 
-    // ✅ Create Firebase Auth account
+    // ✅ create firebase auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // ✅ Save user profile in Firestore
+    // ✅ save user profile in Firestore
     const userRef = doc(db, "users", user.uid);
     await setDoc(userRef, {
-      username,          // 🔴 username save hoga
-      email: user.email, // email bhi save hoga
-      balance: 0,        // default balance
+      username,
+      email: user.email,
+      balance: 0,
       createdAt: serverTimestamp()
     });
 
     showStatus("✅ Signup successful! Redirecting...", "green");
     setTimeout(() => { window.location.href = "index.html"; }, 1200);
   } catch (error) {
-    // 🔄 Error handling
     const code = error.code || "";
     if (code === "auth/email-already-in-use") {
       showStatus("❌ Email already in use. Try logging in.", "red");
@@ -96,33 +90,27 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   }
 });
 
-
-/** Login handler */
+/** ---------------- LOGIN ---------------- */
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
   const username = (document.getElementById("Username")?.value || "").trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
-  if (!username && !email && !password) {
+  if (!username || !email || !password) {
     showStatus("⚠️ Please enter username, email and password.", "red");
-    return;
-  }
-  if (!email || !password) {
-    showStatus("⚠️ Please enter email and password.", "red");
     return;
   }
 
   try {
-    // Try sign in
+    // sign in firebase auth
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const user = credential.user;
 
-    // Fetch user's Firestore doc
+    // fetch firestore profile
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-      // No Firestore profile — treat as no account / require signup
       await signOut(auth);
       showStatus("No Account Found, Please Sign-Up", "red");
       return;
@@ -131,25 +119,15 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
     const data = snap.data() || {};
     const storedUsername = (data.username || "").trim();
 
-    if (!storedUsername) {
-      // Account exists but no username saved → require signup correction
-      await signOut(auth);
-      showStatus("No username set for this account. Please sign up correctly.", "red");
-      return;
-    }
-
     if (storedUsername !== username) {
-      // Username mismatch → invalid user
       await signOut(auth);
       showStatus("Invalid User", "red");
       return;
     }
 
-    // All good
     showStatus("✅ Login successful! Redirecting...", "green");
     setTimeout(() => { window.location.href = "index.html"; }, 800);
   } catch (error) {
-    // sign-in failed: map codes, and try to determine combined "Invalid User and Password" case
     const code = error.code || "";
     console.error("Login error:", error);
 
@@ -157,40 +135,15 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
       showStatus("No Account Found, Please Sign-Up", "red");
       return;
     }
-
     if (code === "auth/wrong-password") {
-      // Check Firestore record for this email to see username mismatch as well
-      try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", email));
-        const qSnap = await getDocs(q);
-        if (!qSnap.empty) {
-          // there is an account with this email — check username in that doc
-          const docData = qSnap.docs[0].data();
-          const storedUsername = (docData.username || "").trim();
-          if (storedUsername && storedUsername !== (document.getElementById("Username")?.value || "").trim()) {
-            showStatus("Invalid User and Password", "red");
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore — fallback to generic message below
-        console.error("Error checking user doc on wrong-password:", e);
-      }
       showStatus("Invalid Password", "red");
       return;
     }
-
-    // Fallback: show firebase message or generic
-    if (error && error.message) {
-      showStatus("❌ " + error.message, "red");
-    } else {
-      showStatus("❌ Login failed", "red");
-    }
+    showStatus("❌ " + (error.message || "Login failed"), "red");
   }
 });
 
-/** Logout function for index.html use */
+/** ---------------- LOGOUT ---------------- */
 export async function logout() {
   try {
     await signOut(auth);
@@ -200,8 +153,9 @@ export async function logout() {
   window.location.href = "auth.html";
 }
 
-/** Redirect if not on auth page and not logged in */
+/** ---------------- AUTH CHECK ---------------- */
 onAuthStateChanged(auth, (user) => {
-  // If not on auth page and user not logged in, redirect handled in index and other pages.
-  // No additional actions required here for now.
+  if (!user && !window.location.href.includes("auth.html")) {
+    window.location.href = "auth.html";
+  }
 });
