@@ -1,152 +1,115 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>One-Wheely | Auth + Home</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>One-Wheely | Game</title>
   <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <!-- Header -->
-  <header style="display:flex; justify-content:space-between; align-items:center; padding:12px; background:#884dff; color:white;">
-    <h2>One-Wheely</h2>
-    <div>
-      <span id="headerUsername" style="margin-right:15px; font-weight:bold;"></span>
-      <button id="logoutBtn" style="display:none; padding:6px 16px; border:none; background:white; color:#884dff; border-radius:6px; cursor:pointer;">Logout</button>
-    </div>
-  </header>
 
-  <!-- Auth Forms -->
-  <main style="padding:20px;">
-    <div id="authSection">
-      <h3>Sign Up</h3>
-      <input id="signupUsername" type="text" placeholder="Username" required><br><br>
-      <input id="signupEmail" type="email" placeholder="Email" required><br><br>
-      <input id="signupPassword" type="password" placeholder="Password" required><br><br>
-      <button id="signupBtn">Sign Up</button>
-      <p id="signupError" style="color:red;"></p>
-
-      <hr>
-
-      <h3>Login</h3>
-      <input id="loginUsername" type="text" placeholder="Username" required><br><br>
-      <input id="loginEmail" type="email" placeholder="Email" required><br><br>
-      <input id="loginPassword" type="password" placeholder="Password" required><br><br>
-      <button id="loginBtn">Login</button>
-      <p id="loginError" style="color:red;"></p>
-    </div>
-
-    <div id="homeSection" style="display:none;">
-      <h3>Welcome to One-Wheely 🎉</h3>
-      <p>Spin the wheel and enjoy the game.</p>
-    </div>
-  </main>
-
-  <!-- Firebase SDK -->
+  <!-- Firebase Auth + Firestore -->
   <script type="module">
-    // Firebase imports
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { 
-      getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
-    import { 
-      getFirestore, doc, setDoc, getDoc 
-    } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { app } from "./firebase-config.js";
 
-    // ✅ Your Firebase Config
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
-    };
-
-    // Init
-    const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Elements
-    const signupUsername = document.getElementById("signupUsername");
-    const signupEmail = document.getElementById("signupEmail");
-    const signupPassword = document.getElementById("signupPassword");
-    const signupBtn = document.getElementById("signupBtn");
-    const signupError = document.getElementById("signupError");
-
-    const loginUsername = document.getElementById("loginUsername");
-    const loginEmail = document.getElementById("loginEmail");
-    const loginPassword = document.getElementById("loginPassword");
-    const loginBtn = document.getElementById("loginBtn");
-    const loginError = document.getElementById("loginError");
-
-    const headerUsername = document.getElementById("headerUsername");
+    const userInfoEl = document.getElementById("userInfo");
     const logoutBtn = document.getElementById("logoutBtn");
-    const authSection = document.getElementById("authSection");
-    const homeSection = document.getElementById("homeSection");
 
-    // ✅ SIGN UP
-    signupBtn.addEventListener("click", async () => {
-      try {
-        const res = await createUserWithEmailAndPassword(auth, signupEmail.value, signupPassword.value);
-        await setDoc(doc(db, "users", res.user.uid), {
-          username: signupUsername.value,
-          email: signupEmail.value,
-          createdAt: new Date()
-        });
-        signupError.textContent = "";
-      } catch (err) {
-        signupError.textContent = err.message;
+    // Listen for auth state
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        window.location.href = "auth.html";
+        return;
       }
+
+      const userRef = doc(db, "users", user.uid);
+
+      // Real-time listener (username + balance)
+      onSnapshot(userRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const name = data.username || "Unknown";
+          const bal = data.balance ?? 0;
+          userInfoEl.textContent = `👤 ${name} | 💰 Balance: Rs ${bal}`;
+        }
+      });
     });
 
-    // ✅ LOGIN
-    loginBtn.addEventListener("click", async () => {
-      try {
-        const res = await signInWithEmailAndPassword(auth, loginEmail.value, loginPassword.value);
-        const snap = await getDoc(doc(db, "users", res.user.uid));
-        if (!snap.exists()) {
-          loginError.textContent = "No Account Found, Please Sign-Up";
-          await signOut(auth);
-          return;
-        }
-        const data = snap.data();
-        if (data.username !== loginUsername.value) {
-          loginError.textContent = "Invalid Username";
-          await signOut(auth);
-          return;
-        }
-        loginError.textContent = "";
-      } catch (err) {
-        if (err.code === "auth/user-not-found") loginError.textContent = "No Account Found, Please Sign-Up";
-        else if (err.code === "auth/wrong-password") loginError.textContent = "Invalid Password";
-        else loginError.textContent = err.message;
-      }
-    });
-
-    // ✅ LOGOUT
+    // Logout
     logoutBtn.addEventListener("click", async () => {
       await signOut(auth);
-    });
-
-    // ✅ STATE CHANGE
-    onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        const snap = await getDoc(doc(db, "users", user.uid));
-        if (snap.exists()) {
-          headerUsername.textContent = snap.data().username;
-        }
-        authSection.style.display = "none";
-        homeSection.style.display = "block";
-        logoutBtn.style.display = "inline-block";
-      } else {
-        headerUsername.textContent = "";
-        authSection.style.display = "block";
-        homeSection.style.display = "none";
-        logoutBtn.style.display = "none";
-      }
+      window.location.href = "auth.html";
     });
   </script>
+</head>
+<body>
+  <header>
+    <h2>One-Wheely</h2>
+    <div>
+      <!-- ✅ Balance + Username Info -->
+      <span id="userInfo" style="margin-right:15px; font-weight:bold; color:#884dff;">Loading...</span>
+      <button id="addBalanceBtn">Add Balance</button>
+      <button id="withdrawBtn">Withdraw</button>
+      <button id="logoutBtn">Logout</button>
+    </div>
+  </header>
+
+  <div id="gameWrapper" style="position:relative; display:inline-block;">
+    <!-- 🎡 Wheel canvas -->
+    <canvas id="wheel" width="500" height="500"></canvas>
+  </div>
+
+  <div class="button-group">
+    <button id="spinBtn">1-SPIN (Rs: 10)</button>
+    <button id="multiSpinBtn">5-SPIN (Rs: 50)</button>
+  </div>
+
+  <!-- Game Result Popup -->
+  <div id="popup" style="display:none; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000;">
+    <div id="popupContent" style="background:#0634ec; padding:20px; border-radius:10px; text-align:center;">
+      <p id="prizeText"></p>
+      <button onclick="closePopup()">OK</button>
+    </div>
+  </div>
+
+  <!-- Add Balance Popup -->
+  <div id="paymentInstructions" style="display:none; text-align:center; max-width:500px; width:90%; padding:30px; border-radius:15px; background:#fff; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:1000;">
+    <h3>💳 Payment Instructions</h3>
+    <div style="margin-bottom:15px; text-align:left;">
+      <label>Acc. Holder Name:</label><br>
+      <input type="text" id="inputAccHolder" placeholder="Enter your name" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
+
+      <label>Acc. Number:</label><br>
+      <input type="text" id="inputAccNumber" placeholder="Enter your number" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
+
+      <label>Amount (min 200 PKR):</label><br>
+      <input type="number" id="inputAmount" placeholder="200" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;" min="200">
+    </div>
+    <hr>
+    <div id="paymentDetails" style="text-align:left;">
+      <p><b>User UID:</b> <span id="userID">...</span></p>
+      <p style="color:red; font-weight:bold; margin-top:5px;">
+        Note: Please enter the User UID below the "Enter Amount" section in the "Add a message here" field when making your payment. Payments cannot be verified and are non-refundable without the User UID.
+      </p>
+      <p><b>Payment Details:</b></p>
+      <p>Easypaisa</p>
+      <p>Acc. Holder Name: <b>Adil Hayyat</b></p>
+      <p>Acc. Number: <b>03127196480</b></p>
+      <p style="color:green;">✅ Balance will update automatically after verification.</p>
+    </div>
+    <button id="doneBtn" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
+  </div>
+
+  <!-- Status message -->
+  <div id="statusMessage" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 20px; border-radius:8px; font-weight:bold; z-index:2000;"></div>
+
+  <!-- Firebase configs -->
+  <script type="module" src="firebase-config.js"></script>
+  <script type="module" src="auth.js"></script>
+  <script type="module" src="payments.js"></script>
+  <script type="module" src="script.js"></script>
 </body>
 </html>
