@@ -1,5 +1,5 @@
-// auth.js (final)
-// Signup (username save), Login (username validate), Logout, Auth check
+// auth.js (final without username)
+// Signup, Login, Logout, Auth check
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -13,10 +13,6 @@ import {
   doc,
   setDoc,
   getDoc,
-  getDocs,
-  collection,
-  query,
-  where,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
@@ -39,12 +35,11 @@ function showStatus(msg, color = "red") {
 
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("username")?.value || "").trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
-  if (!username || !email || !password) {
-    showStatus("⚠️ Please enter username, email and password.", "red");
+  if (!email || !password) {
+    showStatus("⚠️ Please enter email and password.", "red");
     return;
   }
   if (password.length < 6) {
@@ -53,15 +48,6 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   }
 
   try {
-    // 🔍 check username uniqueness
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", username));
-    const existing = await getDocs(q);
-    if (!existing.empty) {
-      showStatus("⚠️ Username already taken. Choose another.", "red");
-      return;
-    }
-
     // ✅ create firebase auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -69,7 +55,6 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     // ✅ save user profile in Firestore
     const userRef = doc(db, "users", user.uid);
     await setDoc(userRef, {
-      username,
       email: user.email,
       balance: 0,
       createdAt: serverTimestamp()
@@ -92,36 +77,26 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
 
 /** ---------------- LOGIN ---------------- */
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("username")?.value || "").trim();
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
 
-  if (!username || !email || !password) {
-    showStatus("⚠️ Please enter username, email and password.", "red");
+  if (!email || !password) {
+    showStatus("⚠️ Please enter email and password.", "red");
     return;
   }
 
   try {
-    // sign in firebase auth
+    // ✅ sign in firebase auth
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const user = credential.user;
 
-    // fetch firestore profile
+    // ✅ check firestore profile exists
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
       await signOut(auth);
       showStatus("No Account Found, Please Sign-Up", "red");
-      return;
-    }
-
-    const data = snap.data() || {};
-    const storedUsername = (data.username || "").trim();
-
-    if (storedUsername !== username) {
-      await signOut(auth);
-      showStatus("Invalid User", "red");
       return;
     }
 
