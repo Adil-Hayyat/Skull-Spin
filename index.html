@@ -85,5 +85,32 @@
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
+
+  <!-- ✅ Username + Balance Loader -->
+  <script type="module">
+    import { auth, db } from "./firebase-config.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+    const userInfoEl = document.getElementById("userInfo");
+    const userIDEl = document.getElementById("userID");
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const userRef = doc(db, "users", user.uid);
+        const snap = await getDoc(userRef);
+
+        if (snap.exists()) {
+          const data = snap.data();
+          const username = data.username || "Unknown";
+          const balance = data.balance ?? 0;
+          userInfoEl.textContent = `👤 ${username} | 💰 Balance: Rs. ${balance}`;
+          userIDEl.textContent = user.uid;
+        } else {
+          userInfoEl.textContent = "⚠️ User data not found!";
+        }
+      }
+    });
+  </script>
 </body>
 </html>
