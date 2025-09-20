@@ -4,47 +4,41 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>One-Wheely | Auth</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css">
+  <!-- Firebase Auth check (keeps logged-in users away from auth page) -->
   <script type="module">
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
-
     const auth = getAuth(app);
-
-    // agar already login hai -> redirect
     onAuthStateChanged(auth, (user) => {
       if (user) {
         window.location.href = "index.html";
       }
     });
   </script>
-  <style>
-    /* chhota inline styling taake page usable rahe */
-    body { font-family: Arial, sans-serif; text-align:center; background:#f5f7ff; color:#111; }
-    header { padding:20px 0; }
-    .auth-box { margin:50px auto; width:360px; background:#fff; padding:24px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
-    .auth-box input { width:100%; padding:10px; margin:10px 0; border-radius:8px; border:1px solid #ddd; }
-    .auth-box button { padding:10px 20px; border:none; background:#884dff; color:#fff; border-radius:8px; cursor:pointer; margin:8px; }
-    #authStatus { margin-top:12px; font-weight:bold; }
-  </style>
 </head>
 <body>
   <header>
     <h2>One-Wheely</h2>
   </header>
 
-  <div class="auth-box">
-    <input type="text" id="username" placeholder="Username (required)" />
-    <input type="email" id="email" placeholder="Email (required)" />
-    <input type="password" id="password" placeholder="Password (min 6 characters)" />
-    <div>
-      <button id="signupBtn">Sign Up</button>
-      <button id="loginBtn">Log In</button>
-    </div>
-    <p id="authStatus" style="display:none;"></p>
+  <!-- Auth form -->
+  <div style="text-align:center; margin-top:120px;">
+    <input type="text" id="Username" placeholder="Enter Username" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br>
+    <small style="color:#999;">Username is required and must be unique</small><br><br>
+
+    <input type="email" id="email" placeholder="Email" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
+
+    <input type="password" id="password" placeholder="Enter 6+ character Password" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
+
+    <button id="signupBtn" style="padding:12px 40px; margin-top:10px; margin-right:8px; border:none; background:#884dff; color:white; border-radius:8px; cursor:pointer;">Sign Up</button>
+    <button id="loginBtn" style="padding:12px 40px; margin-top:10px; border:none; background:#2b6ef6; color:white; border-radius:8px; cursor:pointer;">Log In</button>
   </div>
 
-  <!-- Firebase configs & auth logic -->
+  <!-- ✅ Status message (success/error) -->
+  <p id="authStatus" style="display:none; font-weight:bold; text-align:center; margin-top:15px;"></p>
+
+  <!-- Firebase configs + auth.js -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
 </body>
