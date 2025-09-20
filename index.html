@@ -6,42 +6,16 @@
   <title>One-Wheely | Game</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase Auth + Firestore -->
+  <!-- Firebase Auth check -->
   <script type="module">
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
 
     const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    const userInfoEl = document.getElementById("userInfo");
-    const logoutBtn = document.getElementById("logoutBtn");
-
-    // Listen for auth state
-    onAuthStateChanged(auth, async (user) => {
+    onAuthStateChanged(auth, (user) => {
       if (!user) {
         window.location.href = "auth.html";
-        return;
       }
-
-      const userRef = doc(db, "users", user.uid);
-
-      // Real-time listener (username + balance)
-      onSnapshot(userRef, (snap) => {
-        if (snap.exists()) {
-          const data = snap.data();
-          const name = data.username || "Unknown";
-          const bal = data.balance ?? 0;
-          userInfoEl.textContent = `👤 ${name} | 💰 Balance: Rs ${bal}`;
-        }
-      });
-    });
-
-    // Logout
-    logoutBtn.addEventListener("click", async () => {
-      await signOut(auth);
-      window.location.href = "auth.html";
     });
   </script>
 </head>
@@ -49,7 +23,7 @@
   <header>
     <h2>One-Wheely</h2>
     <div>
-      <!-- ✅ Balance + Username Info -->
+      <!-- ✅ Balance + User Info -->
       <span id="userInfo" style="margin-right:15px; font-weight:bold; color:#884dff;">Loading...</span>
       <button id="addBalanceBtn">Add Balance</button>
       <button id="withdrawBtn">Withdraw</button>
@@ -92,7 +66,7 @@
     <div id="paymentDetails" style="text-align:left;">
       <p><b>User UID:</b> <span id="userID">...</span></p>
       <p style="color:red; font-weight:bold; margin-top:5px;">
-        Note: Please enter the User UID below the "Enter Amount" section in the "Add a message here" field when making your payment. Payments cannot be verified and are non-refundable without the User UID.
+        Note: Please enter the User UID below the "Enter Amount" section in the "Add a message here" field when making your payment. Payments cannot be verified and are non-refundable without the User UID..
       </p>
       <p><b>Payment Details:</b></p>
       <p>Easypaisa</p>
