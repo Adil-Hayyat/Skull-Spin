@@ -165,16 +165,16 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
     if (code === "auth/user-not-found") {
       // email not found
       if (usernameExistsFlag) {
-        showStatus("❌ No Account Found for this email. Username exists but email is different.", "red");
+        showStatus("No Account Found, Please Sign-Up", "red");
       } else {
-        showStatus("❌ No Account Found, Please Sign-Up", "red");
+        showStatus("No Account Found, Please Sign-Up", "red");
       }
       return;
     }
 
     // fallback: if username mismatch & email exists
     if (emailExistsFlag && !usernameExistsFlag) {
-      showStatus("❌ Invalid User", "red");
+      showStatus("Invalid User", "red");
       return;
     }
 
