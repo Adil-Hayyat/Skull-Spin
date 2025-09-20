@@ -1,5 +1,5 @@
 // auth.js (updated)
-// Handles: signup (username saved), login (username validation), logout, auth check
+// Handles signup/login with username stored in Firestore and improved error messages.
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -13,194 +13,190 @@ import {
   doc,
   setDoc,
   getDoc,
-  getDocs,
   collection,
   query,
   where,
-  serverTimestamp
+  getDocs
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-/** Show status messages */
+/* Utility to show status */
 function showStatus(msg, color = "red") {
-  let statusBox = document.getElementById("authStatus");
-  if (!statusBox) {
-    statusBox = document.createElement("p");
-    statusBox.id = "authStatus";
-    document.body.appendChild(statusBox);
-  }
-  statusBox.textContent = msg;
-  statusBox.style.color = color;
-  statusBox.style.display = "block";
-  // Auto-hide after 5s
-  clearTimeout(showStatus._hideTimer);
-  showStatus._hideTimer = setTimeout(() => {
-    statusBox.style.display = "none";
-  }, 5000);
+  const el = document.getElementById("authStatus");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = color;
+  el.style.display = "block";
+  // auto-hide after 5s
+  clearTimeout(el._hideTimeout);
+  el._hideTimeout = setTimeout(() => { el.style.display = "none"; }, 5000);
 }
 
-/** Signup handler */
-document.getElementById("signupBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("Username")?.value || "").trim();
-  const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
-  const password = (document.getElementById("password")?.value || "");
+/* Helper: check if username already exists */
+async function usernameExists(username) {
+  if (!username) return false;
+  const q = query(collection(db, "users"), where("username", "==", username));
+  const snap = await getDocs(q);
+  return !snap.empty;
+}
 
-  if (!username) {
-    showStatus("⚠️ Please enter a username.", "red");
+/* Signup */
+document.getElementById("signupBtn")?.addEventListener("click", async () => {
+  const username = document.getElementById("username").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
+
+  if (!username || !email || !password) {
+    showStatus("⚠️ Please enter username, email and password.", "red");
     return;
   }
-  if (!email) {
-    showStatus("⚠️ Please enter an email.", "red");
-    return;
-  }
-  if (!password || password.length < 6) {
+  if (password.length < 6) {
     showStatus("⚠️ Password must be at least 6 characters.", "red");
     return;
   }
 
   try {
-    // Check username uniqueness (search users collection for same username)
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", username));
-    const existing = await getDocs(q);
-    if (!existing.empty) {
+    // check username unique
+    const taken = await usernameExists(username);
+    if (taken) {
       showStatus("⚠️ Username already taken. Choose another.", "red");
       return;
     }
 
-    // Create auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Save user profile in Firestore (users/{uid})
-    const userRef = doc(db, "users", user.uid);
-    await setDoc(userRef, {
+    // create user document with username + email + balance
+    await setDoc(doc(db, "users", user.uid), {
       username,
       email: user.email,
-      balance: 0,
-      createdAt: serverTimestamp()
+      balance: 0
     });
 
     showStatus("✅ Signup successful! Redirecting...", "green");
-    setTimeout(() => { window.location.href = "index.html"; }, 1200);
-  } catch (error) {
-    // Map common errors to friendlier messages
-    const code = error.code || "";
-    if (code === "auth/email-already-in-use") {
-      showStatus("❌ Email already in use. Try logging in.", "red");
-    } else if (code === "auth/invalid-email") {
+    setTimeout(() => { window.location.href = "index.html"; }, 1400);
+  } catch (err) {
+    // firebase auth error
+    console.error("Signup error:", err);
+    if (err.code === "auth/email-already-in-use") {
+      showStatus("❌ Email already in use. Try login or use another email.", "red");
+    } else if (err.code === "auth/invalid-email") {
       showStatus("❌ Invalid email address.", "red");
     } else {
-      showStatus("❌ " + (error.message || "Signup failed"), "red");
+      showStatus("❌ " + (err.message || "Signup failed."), "red");
     }
-    console.error("Signup error:", error);
   }
 });
 
-/** Login handler */
+/* Login with enhanced checks */
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
-  const username = (document.getElementById("Username")?.value || "").trim();
-  const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
-  const password = (document.getElementById("password")?.value || "");
+  const usernameInput = document.getElementById("username").value.trim();
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
 
-  if (!username && !email && !password) {
+  if (!usernameInput || !email || !password) {
     showStatus("⚠️ Please enter username, email and password.", "red");
-    return;
-  }
-  if (!email || !password) {
-    showStatus("⚠️ Please enter email and password.", "red");
     return;
   }
 
   try {
-    // Try sign in
-    const credential = await signInWithEmailAndPassword(auth, email, password);
-    const user = credential.user;
+    // Attempt sign-in
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const user = cred.user;
 
-    // Fetch user's Firestore doc
+    // fetch user document
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-      // No Firestore profile — treat as no account / require signup
+      // account exists in auth but no users doc
       await signOut(auth);
-      showStatus("No Account Found, Please Sign-Up", "red");
+      showStatus("❌ No Account Found in database. Please Sign-Up.", "red");
       return;
     }
 
-    const data = snap.data() || {};
-    const storedUsername = (data.username || "").trim();
+    const data = snap.data();
+    const storedUsername = data.username || "";
 
-    if (!storedUsername) {
-      // Account exists but no username saved → require signup correction
+    if (storedUsername !== usernameInput) {
+      // username mismatch: sign out and show error
       await signOut(auth);
-      showStatus("No username set for this account. Please sign up correctly.", "red");
+      showStatus("❌ Invalid User (username does not match).", "red");
       return;
     }
 
-    if (storedUsername !== username) {
-      // Username mismatch → invalid user
-      await signOut(auth);
-      showStatus("Invalid User", "red");
-      return;
-    }
-
-    // All good
+    // successful login
     showStatus("✅ Login successful! Redirecting...", "green");
-    setTimeout(() => { window.location.href = "index.html"; }, 800);
-  } catch (error) {
-    // sign-in failed: map codes, and try to determine combined "Invalid User and Password" case
-    const code = error.code || "";
-    console.error("Login error:", error);
+    setTimeout(() => { window.location.href = "index.html"; }, 900);
 
-    if (code === "auth/user-not-found") {
-      showStatus("No Account Found, Please Sign-Up", "red");
+  } catch (err) {
+    console.error("Login error:", err);
+
+    // After sign-in failure, run checks to produce helpful combined messages
+    // Check whether username exists in any user doc
+    const usernameQ = query(collection(db, "users"), where("username", "==", document.getElementById("username").value.trim()));
+    const emailQ = query(collection(db, "users"), where("email", "==", document.getElementById("email").value.trim()));
+
+    const [usernameSnap, emailSnap] = await Promise.all([getDocs(usernameQ), getDocs(emailQ)]).catch(() => [null, null]);
+
+    const usernameExistsFlag = usernameSnap ? !usernameSnap.empty : false;
+    const emailExistsFlag = emailSnap ? !emailSnap.empty : false;
+
+    // Map firebase error codes to readable
+    const code = err.code || "";
+
+    if (!emailExistsFlag && !usernameExistsFlag) {
+      showStatus("❌ No Account Found, Please Sign-Up", "red");
       return;
     }
 
     if (code === "auth/wrong-password") {
-      // Check Firestore record for this email to see username mismatch as well
-      try {
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", email));
-        const qSnap = await getDocs(q);
-        if (!qSnap.empty) {
-          // there is an account with this email — check username in that doc
-          const docData = qSnap.docs[0].data();
-          const storedUsername = (docData.username || "").trim();
-          if (storedUsername && storedUsername !== (document.getElementById("Username")?.value || "").trim()) {
-            showStatus("Invalid User and Password", "red");
-            return;
-          }
-        }
-      } catch (e) {
-        // ignore — fallback to generic message below
-        console.error("Error checking user doc on wrong-password:", e);
+      // password incorrect
+      if (!usernameExistsFlag) {
+        showStatus("❌ Invalid User and Password", "red");
+      } else if (!emailExistsFlag) {
+        // user name exists but email doesn't match any account
+        showStatus("❌ No Account Found for this email. Check email or sign-up.", "red");
+      } else {
+        showStatus("❌ Invalid Password", "red");
       }
-      showStatus("Invalid Password", "red");
       return;
     }
 
-    // Fallback: show firebase message or generic
-    if (error && error.message) {
-      showStatus("❌ " + error.message, "red");
-    } else {
-      showStatus("❌ Login failed", "red");
+    if (code === "auth/user-not-found") {
+      // email not found
+      if (usernameExistsFlag) {
+        showStatus("❌ No Account Found for this email. Username exists but email is different.", "red");
+      } else {
+        showStatus("❌ No Account Found, Please Sign-Up", "red");
+      }
+      return;
     }
+
+    // fallback: if username mismatch & email exists
+    if (emailExistsFlag && !usernameExistsFlag) {
+      showStatus("❌ Invalid User", "red");
+      return;
+    }
+
+    // generic error
+    showStatus("❌ " + (err.message || "Login failed."), "red");
   }
 });
 
-/** Logout function for index.html use */
+/* Logout helper used by index page */
 export async function logout() {
   try {
     await signOut(auth);
-  } catch (e) {
-    console.error("Logout failed:", e);
+    window.location.href = "auth.html";
+  } catch (err) {
+    console.error("Logout error:", err);
   }
-  window.location.href = "auth.html";
 }
 
-/** Redirect if not on auth page and not logged in */
+/* Auth guard */
 onAuthStateChanged(auth, (user) => {
-  // If not on auth page and user not logged in, redirect handled in index and other pages.
-  // No additional actions required here for now.
+  // If user navigates while on index, that file has its own guard. This keeps behavior consistent.
+  if (!user && window.location.pathname.endsWith("index.html")) {
+    window.location.href = "auth.html";
+  }
 });
