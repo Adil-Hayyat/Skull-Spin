@@ -1,6 +1,4 @@
-// auth.js (with Name + Username save + referral support)
-// Signup, Login, Logout, Auth check
-
+// auth.js (with Name + Username save + referral support + award freeSpin to referrer)
 import { auth, db } from "./firebase-config.js";
 import {
   createUserWithEmailAndPassword,
@@ -35,32 +33,13 @@ function showStatus(msg, color = "red") {
     document.body.appendChild(statusBox);
   }
   statusBox.textContent = msg;
-  statusBox.style.background =
-    color === "green"
-      ? "rgba(40,167,69,0.9)"
-      : "rgba(220,53,69,0.95)";
+  statusBox.style.background = color === "green" ? "rgba(40,167,69,0.9)" : "rgba(220,53,69,0.95)";
   statusBox.style.display = "block";
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
     statusBox.style.display = "none";
   }, 5000);
 }
-
-/** ---------------- REFERRAL HANDLING ---------------- */
-// Extract ?ref=uid from URL
-function getReferralFromURL() {
-  const params = new URLSearchParams(window.location.search);
-  return params.get("ref") || "";
-}
-
-// Auto-fill referral code field if exists
-window.addEventListener("DOMContentLoaded", () => {
-  const urlRef = getReferralFromURL();
-  if (urlRef) {
-    const input = document.getElementById("refCode");
-    if (input) input.value = urlRef;
-  }
-});
 
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
@@ -69,12 +48,7 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   const email = (document.getElementById("signupEmail")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("signupPassword")?.value || "");
   const confirmPassword = (document.getElementById("confirmPassword")?.value || "");
-
-  // Referral: input or URL
-  let refCodeInput = (document.getElementById("refCode")?.value || "").trim();
-  if (!refCodeInput) {
-    refCodeInput = getReferralFromURL();
-  }
+  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional referral code
 
   // validations
   if (!name || !username || !email || !password || !confirmPassword) {
@@ -104,7 +78,8 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
       balance: 0,
       createdAt: serverTimestamp(),
       referCode: user.uid,      // user can share this UID as referral code
-      referralsCount: 0
+      referralsCount: 0,
+      freeSpins: 0
     };
 
     await setDoc(userRef, baseData);
@@ -120,10 +95,13 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
             referredAt: serverTimestamp()
           }).catch(()=>{});
 
+          // increment referralsCount and award 1 freeSpin to referrer
           try {
-            await updateDoc(referrerRef, { referralsCount: increment(1) });
+            await updateDoc(referrerRef, { referralsCount: increment(1), freeSpins: increment(1) });
           } catch (e) {
+            // if update fails, try to set fallback values (rare)
             try { await updateDoc(referrerRef, { referralsCount: 1 }); } catch(e2){}
+            try { await updateDoc(referrerRef, { freeSpins: 1 }); } catch(e3){}
           }
         }
       } catch (e) {
