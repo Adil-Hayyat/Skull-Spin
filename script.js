@@ -1,4 +1,4 @@
-// script.js (responsive + mobile menu + original game logic + referrals)
+// script.js (responsive + mobile menu + original game logic + referrals + freeSpin support)
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
@@ -12,7 +12,8 @@ import {
   setDoc,
   getDocs,
   query,
-  where
+  where,
+  increment
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
 
@@ -58,10 +59,17 @@ const referUserIDEl = document.getElementById("referUserID");
 const referralsCountEl = document.getElementById("referralsCount");
 const copyReferralBtn = document.getElementById("copyReferralBtn");
 
-// Footer email element (will show current user's email)
+// FreeSpins DOM
+const freeSpinsEl = document.getElementById("freeSpins");
+const mobileFreeSpinsEl = document.getElementById("mobileFreeSpins");
+
+// Footer email (shows current user's email)
 const footerEmail = document.getElementById("footerEmail");
 
+const ADMIN_EMAIL = "adilhayat113@gmail.com"; // still available if needed elsewhere
+
 let balance = 0;
+let freeSpins = 0;
 let currentUser = null;
 let currentRotationRad = 0;
 
@@ -199,17 +207,30 @@ function updateUserInfoDisplay() {
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
   if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : '...';
   if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
-  // Footer: show current user's email (or '...' if not logged in)
   if (footerEmail) footerEmail.textContent = currentUser ? currentUser.email : '...';
-  // Also update refer popup UI if present
+  if (freeSpinsEl) freeSpinsEl.textContent = `Free: ${freeSpins || 0}`;
+  if (mobileFreeSpinsEl) mobileFreeSpinsEl.textContent = `Free: ${freeSpins || 0}`;
   if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
 }
 
 // ===== Wheel animation & result handling (with sound) =====
 async function spinWheel(cost = 10) {
+  // If user has a free spin: consume it and set cost=0
+  if (currentUser && freeSpins > 0) {
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), { freeSpins: increment(-1) });
+      // local will update via onSnapshot; set cost=0 for current operation
+      cost = 0;
+      showStatus("🎟️ Used 1 free spin!", "success");
+    } catch (err) {
+      console.error("Failed to consume freeSpin:", err);
+    }
+  }
+
   if (cost > 0 && balance < cost) {
     showStatus("⚠️ Not enough balance!", "error"); return null;
   }
+
   if (cost > 0) {
     balance -= cost;
     updateUserInfoDisplay();
@@ -283,16 +304,41 @@ spinBtn?.addEventListener("click", async () => {
 });
 
 multiSpinBtn?.addEventListener("click", async () => {
-  if (balance < 50) { showStatus("⚠️ Not enough balance!", "error"); return; }
+  // 5 spins, cost 10 each => normally 50
+  const totalSpins = 5;
+  const availableFree = freeSpins || 0;
+  const freeToUse = Math.min(availableFree, totalSpins);
+  const paidSpins = totalSpins - freeToUse;
+  const totalCost = paidSpins * 10;
+
+  if (totalCost > 0 && balance < totalCost) {
+    showStatus("⚠️ Not enough balance for 5-SPIN (after free spins)!", "error"); return;
+  }
+
   multiSpinBtn.disabled = true;
   spinBtn.disabled = true;
-  balance -= 50;
-  updateUserInfoDisplay();
-  try { await saveBalance(); } catch {}
+
+  // If there are free spins to consume, decrement them in DB
+  if (currentUser && freeToUse > 0) {
+    try {
+      await updateDoc(doc(db, "users", currentUser.uid), { freeSpins: increment(-freeToUse) });
+      // freeSpins local will update via onSnapshot
+    } catch (err) {
+      console.error("Failed to decrement freeSpins for multi:", err);
+    }
+  }
+
+  // Deduct paid cost from balance now and save
+  if (totalCost > 0) {
+    balance -= totalCost;
+    updateUserInfoDisplay();
+    try { await saveBalance(); } catch {}
+  }
+
   const results = [];
   try {
-    for (let i=0;i<5;i++){
-      const prize = await spinWheel(0);
+    for (let i=0;i<totalSpins;i++){
+      const prize = await spinWheel(0); // pass cost 0 because we already handled payment/freeSpins
       if (prize) results.push(prize);
       await new Promise(r=>setTimeout(r,160));
     }
@@ -457,17 +503,21 @@ onAuthStateChanged(auth, async (user) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
-      await setDoc(userRef, { email: user.email, balance: 0, referralsCount: 0 });
+      await setDoc(userRef, { email: user.email, balance: 0, referralsCount: 0, freeSpins: 0 });
       balance = 0;
+      freeSpins = 0;
     } else {
-      balance = snap.data().balance || 0;
+      const d = snap.data();
+      balance = d.balance || 0;
+      freeSpins = d.freeSpins || 0;
     }
     updateUserInfoDisplay();
-    // Keep live sync for user doc (balance + referralsCount)
+    // Keep live sync for user doc (balance + referralsCount + freeSpins)
     onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
         balance = data.balance || 0;
+        freeSpins = data.freeSpins || 0;
         updateUserInfoDisplay();
         // update referralsCount (if element present)
         const refs = data.referralsCount || 0;
@@ -481,7 +531,10 @@ onAuthStateChanged(auth, async (user) => {
     if (mobileBalance) mobileBalance.textContent = `Rs: 0`;
     if (mobileEmail) mobileEmail.textContent = '...';
     if (userIDSpan) userIDSpan.textContent = '...';
-    if (footerEmail) footerEmail.textContent = '...'; // show '...' when not logged in
+    if (footerEmail) footerEmail.textContent = '...';
+    freeSpins = 0;
+    if (freeSpinsEl) freeSpinsEl.textContent = `Free: 0`;
+    if (mobileFreeSpinsEl) mobileFreeSpinsEl.textContent = `Free: 0`;
     if (referralsCountEl) referralsCountEl.textContent = '0';
     if (referUserIDEl) referUserIDEl.textContent = '...';
   }
@@ -504,6 +557,9 @@ function ensureReferPopupListeners() {
       const data = udoc.exists() ? udoc.data() : {};
       const refs = data.referralsCount || 0;
       if (referralsCountEl) referralsCountEl.textContent = refs;
+      freeSpins = data.freeSpins || 0;
+      if (freeSpinsEl) freeSpinsEl.textContent = `Free: ${freeSpins}`;
+      if (mobileFreeSpinsEl) mobileFreeSpinsEl.textContent = `Free: ${freeSpins}`;
     } catch (err) {
       console.error("Failed to fetch referralsCount:", err);
       if (referralsCountEl) referralsCountEl.textContent = '0';
@@ -570,6 +626,7 @@ function ensureReferPopupListeners() {
       } catch (err) {
         console.error("Copy failed:", err);
         showStatus("❌ Failed to copy link. Please copy manually: " + referralLink, "error");
+        // if copy failed, select the link in a prompt as last resort
         try { window.prompt("Copy this link (Ctrl/Cmd+C):", referralLink); } catch(e){}
       } finally {
         // restore button after short delay
@@ -622,5 +679,5 @@ canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false
 // ===== init =====
 ensureAddBalancePopupListeners();
 ensureWithdrawModal();
-ensureReferPopupListeners();
+ensureReferPopupListeners(); // ← new
 resizeCanvasToContainer();
