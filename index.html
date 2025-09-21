@@ -22,7 +22,7 @@
     </div>
 
     <!-- Mobile hamburger -->
-    <button id="hamburgerBtn" class="hamburger" aria-label="Open menu">
+    <button id="hamburgerBtn" class="hamburger" aria-label="Open menu" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
   </header>
@@ -67,23 +67,29 @@
     </div>
   </div>
 
-  <!-- Add Balance Modal -->
-  <div id="paymentInstructions" class="modal" aria-hidden="true">
+  <!-- Add Balance Modal (responsive) -->
+  <div id="paymentInstructions" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
     <div id="paymentBox" class="modal-box">
-      <h3>💳 Payment Instructions</h3>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h3 id="paymentTitle" style="margin:0;">💳 Payment Instructions</h3>
+        <!-- close X (also handled by paymentCancel in script if needed) -->
+        <button id="paymentClose" class="ghost" aria-label="Close payment dialog" style="background:transparent; border:none; color:#000; font-size:18px;">✕</button>
+      </div>
 
-      <label for="inputAccHolder">Acc. Holder Name:</label>
-      <input id="inputAccHolder" type="text" placeholder="Enter your name" />
+      <div style="margin-top:10px; text-align:left;">
+        <label for="inputAccHolder" style="font-weight:600;">Acc. Holder Name:</label>
+        <input id="inputAccHolder" type="text" placeholder="Enter your name" />
 
-      <label for="inputAccNumber">Acc. Number:</label>
-      <input id="inputAccNumber" type="text" placeholder="Enter your number" />
+        <label for="inputAccNumber" style="font-weight:600;">Acc. Number:</label>
+        <input id="inputAccNumber" type="text" placeholder="Enter your number" />
 
-      <label for="inputAmount">Amount (min 200 PKR):</label>
-      <input id="inputAmount" type="number" placeholder="200" min="200" />
+        <label for="inputAmount" style="font-weight:600;">Amount (min 200 PKR):</label>
+        <input id="inputAmount" type="number" placeholder="200" min="200" />
+      </div>
 
-      <hr />
+      <hr style="margin:12px 0; border:0; border-top:1px solid #eee;" />
 
-      <div id="paymentDetails" style="text-align:left;">
+      <div id="paymentDetails" style="text-align:left; font-size:0.95rem;">
         <p><strong>User UID:</strong> <span id="userID">...</span></p>
         <p style="color:red; font-weight:bold; margin-top:6px; font-size:0.9rem;">
           Note: Enter the User UID in the payment message when transferring.
@@ -92,7 +98,7 @@
         <p>Easypaisa — Acc. Holder: <strong>Adil Hayyat</strong> — <strong>03127196480</strong></p>
       </div>
 
-      <div class="modal-actions">
+      <div class="modal-actions" style="margin-top:12px;">
         <button id="paymentCancel" class="ghost">Cancel</button>
         <button id="doneBtn" class="primary">Done</button>
       </div>
@@ -107,5 +113,58 @@
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
+
+  <!-- Small helpers: toggle mobile menu and ensure modal close by X or outside click -->
+  <script>
+    // Mobile menu toggle (in case script.js not loaded yet)
+    (function(){
+      const hamburger = document.getElementById('hamburgerBtn');
+      const mobileMenu = document.getElementById('mobileMenu');
+      if(!hamburger || !mobileMenu) return;
+      hamburger.addEventListener('click', () => {
+        const open = mobileMenu.style.display === 'block';
+        if(open) {
+          mobileMenu.style.display = 'none';
+          mobileMenu.setAttribute('aria-hidden','true');
+          hamburger.setAttribute('aria-expanded','false');
+        } else {
+          mobileMenu.style.display = 'block';
+          mobileMenu.setAttribute('aria-hidden','false');
+          hamburger.setAttribute('aria-expanded','true');
+        }
+      });
+    })();
+
+    // Payment modal: close X and click outside to close (script.js also handles open/close)
+    (function(){
+      const modal = document.getElementById('paymentInstructions');
+      const closeBtn = document.getElementById('paymentClose');
+      const cancelBtn = document.getElementById('paymentCancel');
+
+      if(closeBtn) closeBtn.addEventListener('click', () => {
+        if(modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+      });
+      if(cancelBtn) cancelBtn.addEventListener('click', () => {
+        if(modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
+      });
+
+      // click outside to close
+      window.addEventListener('click', (e) => {
+        if(!modal) return;
+        if(e.target === modal) {
+          modal.style.display = 'none';
+          modal.setAttribute('aria-hidden','true');
+        }
+      });
+
+      // Esc to close
+      window.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape' && modal && modal.style.display === 'flex') {
+          modal.style.display = 'none';
+          modal.setAttribute('aria-hidden','true');
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
