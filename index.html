@@ -16,7 +16,6 @@
     <div class="header-right" id="headerRight">
       <button id="addBalanceBtn" type="button">Add Balance</button>
       <button id="withdrawBtn" type="button">Withdraw</button>
-      <!-- 🔹 New Refer Button -->
       <button id="referBtn" type="button">Refer</button>
       <button id="logoutBtn" type="button">Logout</button>
     </div>
@@ -26,7 +25,6 @@
     </button>
   </header>
 
-  <!-- Mobile menu -->
   <nav id="mobileMenu" class="mobile-menu" aria-hidden="true" style="display:none;">
     <div class="mobile-user">
       <div class="mobile-title-row">
@@ -42,7 +40,6 @@
     <div class="mobile-actions">
       <button id="mobileAddBalanceBtn">Add Balance</button>
       <button id="mobileWithdrawBtn">Withdraw</button>
-      <!-- 🔹 Refer in mobile menu -->
       <button id="mobileReferBtn">Refer</button>
     </div>
   </nav>
@@ -60,7 +57,6 @@
     </section>
   </main>
 
-  <!-- Win popup -->
   <div id="popup" class="overlay" aria-hidden="true" style="display:none;">
     <div id="popupContent">
       <p id="prizeText">You won: —</p>
@@ -68,7 +64,6 @@
     </div>
   </div>
 
-  <!-- Payment modal -->
   <div id="paymentInstructions" class="modal" aria-hidden="true" role="dialog" aria-modal="true" style="display:none;">
     <div id="paymentBox" class="modal-box" style="max-height:90vh; overflow-y:auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
@@ -113,7 +108,6 @@
     </div>
   </div>
 
-  <!-- 🔹 Refer popup -->
   <div id="referPopup" class="modal" aria-hidden="true" role="dialog" aria-modal="true" style="display:none;">
     <div id="referBox" class="modal-box" style="max-height:90vh; overflow-y:auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
@@ -138,7 +132,7 @@
             <path d="M3 21c0-3.866 3.134-7 7-7h4c3.866 0 7 3.134 7 7v1H3v-1z" fill="#fff" opacity="0.95"/>
           </svg>
         </a>
-        <span id="footerEmail" class="footer-email">adilhayat113@gmail.com</span>
+        <span id="footerEmail" class="footer-email">...</span>
       </div>
 
       <div class="footer-right">
@@ -153,33 +147,5 @@
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
-
-  <script>
-    (function(){
-      const modal = document.getElementById('paymentInstructions');
-      const closeBtn = document.getElementById('paymentClose');
-      const cancelBtn = document.getElementById('paymentCancel');
-      if (!modal) return;
-      function hideModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
-      function showModal(){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); const box=document.getElementById('paymentBox'); if(box) box.scrollTop=0; }
-      if (closeBtn) closeBtn.addEventListener('click', hideModal);
-      if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
-      window.addEventListener('click', (e)=>{ if (e.target===modal) hideModal(); });
-      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hideModal(); });
-      window.__showPaymentModal = showModal; window.__hidePaymentModal = hideModal;
-    })();
-
-    (function(){
-      const hamburger=document.getElementById('hamburgerBtn');
-      const mobileMenu=document.getElementById('mobileMenu');
-      if(!hamburger||!mobileMenu) return;
-      hamburger.addEventListener('click', ()=>{
-        const open = mobileMenu.style.display==='block';
-        mobileMenu.style.display = open ? 'none' : 'block';
-        mobileMenu.setAttribute('aria-hidden', String(open? 'true':'false'));
-        hamburger.setAttribute('aria-expanded', String(!open));
-      });
-    })();
-  </script>
 </body>
 </html>
