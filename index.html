@@ -11,8 +11,6 @@
     <div class="header-left">
       <h2 class="title">Skull-Spin</h2>
       <div id="headerBalance" class="balance-desktop" aria-hidden="true">Rs: 0</div>
-      <!-- Free spins display (desktop) -->
-      <div id="freeSpins" class="balance-desktop" aria-hidden="true" style="margin-left:8px;">Free: 0</div>
     </div>
 
     <div class="header-right" id="headerRight">
@@ -33,10 +31,7 @@
     <div class="mobile-user">
       <div class="mobile-title-row">
         <strong class="mobile-title">Skull-Spin</strong>
-        <div style="display:flex; gap:8px; align-items:center;">
-          <div id="mobileBalance" class="mobile-balance">Rs: 0</div>
-          <div id="mobileFreeSpins" class="mobile-balance">Free: 0</div>
-        </div>
+        <div id="mobileBalance" class="mobile-balance">Rs: 0</div>
       </div>
       <div class="mobile-account" style="margin-top:8px;">
         <div id="mobileEmail" style="font-weight:700; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">...</div>
@@ -143,6 +138,7 @@
             <path d="M3 21c0-3.866 3.134-7 7-7h4c3.866 0 7 3.134 7 7v1H3v-1z" fill="#fff" opacity="0.95"/>
           </svg>
         </a>
+        <!-- initial value '...' — will be replaced by logged-in user's email via script.js -->
         <span id="footerEmail" class="footer-email">...</span>
       </div>
 
