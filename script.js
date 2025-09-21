@@ -1,8 +1,8 @@
-// script.js (FULL UPDATED FILE)
-// - Adds add-balance popup handling (Done button) integrated with Firestore
-// - Withdraw modal updated (no prompt), wheel/spin/red-dot behavior preserved
-// - Multi-spin sequential, single spin works, balance sync saved
-// - Admin approval flow expected for payments/withdrawals
+// script.js (RESPONSIVE + mobile-friendly version)
+// - Canvas resizing using container size + devicePixelRatio
+// - Keeps original Firebase + spin/payment/withdraw logic intact
+// - Pointer/touch prevention to avoid accidental page scroll while playing
+// - Safely redraws wheel after resize or orientation change
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -21,13 +21,11 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
 
-// -------- Canvas + DOM --------
+// -------- DOM & canvas --------
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
 
-// ensure canvas has explicit size (same as your index.html attributes)
-canvas.width = canvas.width || 500;
-canvas.height = canvas.height || 500;
+const gameWrapper = document.getElementById("gameWrapper") || canvas.parentElement;
 
 // Buttons / DOM references
 const spinBtn = document.getElementById("spinBtn");
@@ -36,7 +34,7 @@ const userInfo = document.getElementById("userInfo");
 const withdrawBtn = document.getElementById("withdrawBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
-// Add-balance popup elements (from your index.html)
+// Add-balance popup elements (from index.html)
 const addBalanceBtn = document.getElementById("addBalanceBtn");
 const paymentPopup = document.getElementById("paymentInstructions");
 const doneBtn = document.getElementById("doneBtn");
@@ -45,18 +43,21 @@ const inputAccHolder = document.getElementById("inputAccHolder");
 const inputAccNumber = document.getElementById("inputAccNumber");
 const inputAmount = document.getElementById("inputAmount");
 
-// Status box helper exists in DOM? If not, we'll create on demand.
+// Status box helper
 let balance = 0;
 let currentUser = null;
 
-// -------- Wheel image --------
+// Keep last rendered rotation (in radians) so we can redraw after resize
+let currentRotationRad = 0;
+
+// -------- Wheel image & prize config --------
 const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
 
-// Prize config (must match graphic clockwise from top)
+// Prize config (clockwise order from top)
 const prizes = ["100", "💀", "10", "💀", "00", "💀", "1000", "💀"];
 const SECTOR_COUNT = prizes.length;
-const SECTOR_SIZE = 360 / SECTOR_COUNT; // e.g. 45°
+const SECTOR_SIZE = 360 / SECTOR_COUNT; // degrees per sector
 
 const sectors = [];
 for (let i = 0; i < SECTOR_COUNT; i++) {
@@ -66,31 +67,108 @@ for (let i = 0; i < SECTOR_COUNT; i++) {
   sectors.push({ prize: prizes[i], startDeg: start, endDeg: end, centerDeg: center });
 }
 
-// -------- Drawing helpers --------
-function clearCanvas() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+// -------- Responsive canvas helpers --------
+function resizeCanvasToContainer() {
+  // If container not found, fallback to window size
+  const rect = gameWrapper ? gameWrapper.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
+  // Use available width and height; keep square by using min of both
+  const cssWidth = Math.max(64, Math.floor(rect.width)); // ensure non-zero
+  const cssHeight = Math.max(64, Math.floor(rect.height));
+
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+
+  // Set CSS size (visual size)
+  canvas.style.width = cssWidth + "px";
+  canvas.style.height = cssHeight + "px";
+
+  // Set internal pixel buffer size for crisp rendering
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
+
+  // Reset transform to a clean state
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // Scale so drawing uses CSS pixels coordinates (makes math easier)
+  ctx.scale(dpr, dpr);
+
+  // Redraw with last known rotation
+  drawWheel(currentRotationRad);
 }
-function drawWheel(rotation = 0) {
+window.addEventListener("resize", debounce(resizeCanvasToContainer, 120));
+window.addEventListener("orientationchange", () => setTimeout(resizeCanvasToContainer, 120));
+
+// small debounce utility
+function debounce(fn, wait = 100) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), wait);
+  };
+}
+
+// -------- Drawing helpers (work in CSS pixel coords because of ctx.scale(dpr,dpr)) --------
+function clearCanvas() {
+  // clear using CSS-sized rect (not internal canvas pixel size)
+  const cssW = canvas.clientWidth || parseFloat(canvas.style.width) || 500;
+  const cssH = canvas.clientHeight || parseFloat(canvas.style.height) || 500;
+  ctx.clearRect(0, 0, cssW, cssH);
+}
+
+function drawWheel(rotationRad = 0) {
+  currentRotationRad = rotationRad;
   clearCanvas();
+  // Work with CSS pixel coordinates because we called ctx.scale(dpr,dpr) in resize
+  const cssW = canvas.clientWidth || parseFloat(canvas.style.width) || 500;
+  const cssH = canvas.clientHeight || parseFloat(canvas.style.height) || 500;
+
   ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
-  ctx.rotate(rotation);
-  ctx.drawImage(wheelImg, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+  // translate to center (CSS coords)
+  ctx.translate(cssW / 2, cssH / 2);
+  ctx.rotate(rotationRad);
+  // draw the wheel image to fit the CSS box
+  // If wheelImg not loaded yet, fill with fallback
+  if (wheelImg.complete && wheelImg.naturalWidth) {
+    ctx.drawImage(wheelImg, -cssW / 2, -cssH / 2, cssW, cssH);
+  } else {
+    // fallback: draw a circle and sectors
+    const radius = Math.min(cssW, cssH) / 2;
+    const sectorCount = SECTOR_COUNT;
+    for (let i = 0; i < sectorCount; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.arc(0, 0, radius, (i * SECTOR_SIZE) * Math.PI / 180, ((i + 1) * SECTOR_SIZE) * Math.PI / 180);
+      ctx.closePath();
+      ctx.fillStyle = i % 2 === 0 ? "#fff" : "rgba(6,52,236,0.06)";
+      ctx.fill();
+    }
+    // simple center dot
+    ctx.beginPath();
+    ctx.fillStyle = "#222";
+    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
+
 function drawRedDot(rotationRad, centerDeg) {
-  const centerRad = (centerDeg * Math.PI) / 180;
+  // draws small red dot at sector center relative to current rotation
+  // Work in CSS coordinates
+  const cssW = canvas.clientWidth || parseFloat(canvas.style.width) || 500;
+  const cssH = canvas.clientHeight || parseFloat(canvas.style.height) || 500;
+  const radius = Math.min(cssW, cssH) / 2;
+  const dotDistance = radius - 18;
+
   ctx.save();
-  ctx.translate(canvas.width / 2, canvas.height / 2);
+  ctx.translate(cssW / 2, cssH / 2);
+  // rotationRad + sector center (deg->rad)
+  const centerRad = (centerDeg * Math.PI) / 180;
   ctx.rotate(rotationRad + centerRad);
-  const radius = Math.min(canvas.width, canvas.height) / 2;
-  const dotDistance = radius - 18; // tweak offset from edge
   ctx.fillStyle = "red";
   ctx.beginPath();
   ctx.arc(0, -dotDistance, 9, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 }
+
 function getSectorIndexFromStopDegrees(finalDegrees) {
   let deg = finalDegrees % 360;
   if (deg < 0) deg += 360;
@@ -100,7 +178,7 @@ function getSectorIndexFromStopDegrees(finalDegrees) {
   return index;
 }
 
-// -------- Firebase balance helpers --------
+// -------- Firebase balance helpers (unchanged behavior) --------
 async function saveBalance() {
   if (!currentUser) return;
   const userRef = doc(db, "users", currentUser.uid);
@@ -116,17 +194,19 @@ function updateUserInfoDisplay() {
   }
 }
 
-// -------- Wheel animation & result handling --------
+// -------- Wheel animation & result handling (unchanged logic; uses rotation in degrees -> radians) --------
 async function spinWheel(cost = 10) {
-  if (balance < cost) {
+  if (cost > 0 && balance < cost) {
     showStatus("⚠️ Not enough balance!", "error");
     return null;
   }
 
   // Deduct cost immediately for spins (gameplay)
-  balance -= cost;
-  updateUserInfoDisplay();
-  try { await saveBalance(); } catch (e) { /* non-fatal */ }
+  if (cost > 0) {
+    balance -= cost;
+    updateUserInfoDisplay();
+    try { await saveBalance(); } catch (e) { /* non-fatal */ }
+  }
 
   return new Promise((resolve) => {
     const rounds = 5 + Math.floor(Math.random() * 3); // 5..7 rounds
@@ -139,6 +219,7 @@ async function spinWheel(cost = 10) {
     function step(now) {
       spinTime = now - startTime;
       const t = Math.min(spinTime, spinTimeTotal);
+      // easeOut cubic-like (keeps original feeling)
       const easeOut = (t, b, c, d) => c * ((t = t / d - 1) * t * t + 1) + b;
       const currentAngle = easeOut(t, 0, spinAngle, spinTimeTotal);
       const rotationRad = (currentAngle * Math.PI) / 180;
@@ -172,7 +253,7 @@ async function spinWheel(cost = 10) {
   });
 }
 
-// -------- Button handlers --------
+// -------- Button handlers (kept behavior) --------
 spinBtn?.addEventListener("click", async () => {
   spinBtn.disabled = true;
   try {
@@ -200,9 +281,10 @@ multiSpinBtn?.addEventListener("click", async () => {
   const results = [];
   try {
     for (let i = 0; i < 5; i++) {
-      const prize = await spinWheel(0); // pass 0 so spinWheel doesn't deduct again
+      const prize = await spinWheel(0); // cost 0 to avoid double-deduct
       if (prize) results.push(prize);
-      await new Promise(r => setTimeout(r, 200));
+      // small pause between spins for UX
+      await new Promise((r) => setTimeout(r, 200));
     }
     showPrize("🎁 You got:\n" + results.join(", "));
   } finally {
@@ -211,12 +293,11 @@ multiSpinBtn?.addEventListener("click", async () => {
   }
 });
 
-// -------- Add-balance popup handling --------
+// -------- Add-balance popup handling (kept mostly intact) --------
 function ensureAddBalancePopupListeners() {
   // If elements missing, skip
   if (!addBalanceBtn || !paymentPopup || !doneBtn || !userIDSpan) return;
 
-  // Open popup directly
   addBalanceBtn.addEventListener("click", async () => {
     const user = currentUser;
     if (!user) {
@@ -225,10 +306,9 @@ function ensureAddBalancePopupListeners() {
     }
     userIDSpan.textContent = user.uid;
     // show popup
-    paymentPopup.style.display = "block";
+    paymentPopup.style.display = "flex";
   });
 
-  // Done button
   doneBtn.addEventListener("click", async () => {
     const user = currentUser;
     if (!user) {
@@ -277,7 +357,7 @@ function ensureAddBalancePopupListeners() {
     }
   });
 
-  // If user clicks outside popup to close (optional): you can add this if needed
+  // click outside to close
   window.addEventListener("click", (e) => {
     if (!paymentPopup) return;
     if (e.target === paymentPopup) {
@@ -286,7 +366,7 @@ function ensureAddBalancePopupListeners() {
   });
 }
 
-// -------- Withdraw modal (updated) --------
+// -------- Withdraw modal (kept same) --------
 function ensureWithdrawModal() {
   if (document.getElementById("withdrawModal")) return;
 
@@ -454,7 +534,7 @@ withdrawBtn?.addEventListener("click", async () => {
   showWithdrawModal();
 });
 
-// -------- Logout, firestore sync --------
+// -------- Logout, firestore sync (unchanged) --------
 logoutBtn?.addEventListener("click", logout);
 
 onAuthStateChanged(auth, async (user) => {
@@ -520,9 +600,31 @@ function showStatus(message, type) {
 
 // initial draw when image loaded
 wheelImg.onload = () => {
-  drawWheel(0);
+  // Force a resize so DPR scaling is applied and image is drawn crisply
+  resizeCanvasToContainer();
 };
 
 // initialize listeners that depend on DOM elements
 ensureAddBalancePopupListeners();
 ensureWithdrawModal();
+
+// Prevent touch gestures causing page scroll while interacting with the wheel
+if (canvas) {
+  // block default on pointerdown so touch doesn't scroll while playing
+  canvas.addEventListener("pointerdown", (e) => {
+    // allow the page to respond to two-finger gestures (pinch) by not preventing them here
+    if (e.isPrimary) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  // Also prevent passive touch move on the canvas to avoid subtle scrolls
+  canvas.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+  }, { passive: false });
+}
+
+// Ensure canvas is sized on load (in case wheelImg cached and onload didn't fire)
+window.addEventListener("load", () => {
+  setTimeout(resizeCanvasToContainer, 20);
+});
