@@ -13,30 +13,27 @@
       <div id="headerBalance" class="balance-desktop" aria-hidden="true">Rs: 0</div>
     </div>
 
-    <!-- Desktop right controls (no user email here) -->
     <div class="header-right" id="headerRight">
+      <span id="userInfo">Loading...</span>
       <button id="addBalanceBtn" type="button">Add Balance</button>
       <button id="withdrawBtn" type="button">Withdraw</button>
       <button id="logoutBtn" type="button">Logout</button>
     </div>
 
-    <!-- Mobile hamburger -->
-    <button id="hamburgerBtn" class="hamburger" aria-label="Open menu" aria-expanded="false">
+    <button id="hamburgerBtn" class="hamburger" aria-label="Open menu">
       <span></span><span></span><span></span>
     </button>
   </header>
 
-  <!-- Mobile slide-down menu -->
-  <nav id="mobileMenu" class="mobile-menu" aria-hidden="true" style="display:none;">
+  <nav id="mobileMenu" class="mobile-menu" aria-hidden="true">
     <div class="mobile-user">
       <div class="mobile-title-row">
         <strong class="mobile-title">One-Wheely</strong>
         <div id="mobileBalance" class="mobile-balance">Rs: 0</div>
       </div>
-      <div class="mobile-account" style="margin-top:8px;">
-        <!-- yahan user email dikhega (script.js set karega) -->
-        <div id="mobileEmail" style="font-weight:700; color:#fff; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">...</div>
-        <button id="mobileLogoutBtn" class="ghost" style="margin-left:8px;">Logout</button>
+      <div class="mobile-account">
+        <div id="mobileEmail">...</div>
+        <button id="mobileLogoutBtn" class="ghost">Logout</button>
       </div>
     </div>
 
@@ -60,7 +57,7 @@
   </main>
 
   <!-- Game Result Popup -->
-  <div id="popup" class="overlay" aria-hidden="true" style="display:none;">
+  <div id="popup" class="overlay" aria-hidden="true">
     <div id="popupContent">
       <p id="prizeText">You won: —</p>
       <button id="popupOkBtn" type="button">OK</button>
@@ -68,70 +65,48 @@
   </div>
 
   <!-- Add Balance Modal -->
-  <div id="paymentInstructions" class="modal" aria-hidden="true" role="dialog" aria-modal="true" style="display:none;">
-    <div id="paymentBox" class="modal-box" style="max-height:90vh; overflow-y:auto;">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-        <h3 id="paymentTitle" style="margin:0;">💳 Payment Instructions</h3>
-        <button id="paymentClose" class="ghost" aria-label="Close payment dialog" style="background:transparent; border:none; font-size:18px; color:#000;">✕</button>
+  <div id="paymentInstructions" class="modal" aria-hidden="true">
+    <div id="paymentBox" class="modal-box">
+      <h3>💳 Payment Instructions</h3>
+
+      <label for="inputAccHolder">Acc. Holder Name:</label>
+      <input id="inputAccHolder" type="text" placeholder="Enter your name" />
+
+      <label for="inputAccNumber">Acc. Number:</label>
+      <input id="inputAccNumber" type="text" placeholder="Enter your number" />
+
+      <label for="inputAmount">Amount (min 200 PKR):</label>
+      <input id="inputAmount" type="number" placeholder="200" min="200" />
+
+      <hr />
+
+      <div id="paymentDetails" style="text-align:left;">
+        <p><strong>User UID:</strong> <span id="userID">...</span></p>
+        <p style="color:red; font-weight:bold; margin-top:6px; font-size:0.9rem;">
+          Note: Enter the User UID in the payment message when transferring.
+        </p>
+        <p><strong>Payment Details:</strong></p>
+        <p>Easypaisa — Acc. Holder: <strong>Adil Hayyat</strong> — <strong>03127196480</strong></p>
       </div>
 
-      <div style="margin-top:12px; text-align:left;">
-        <div style="margin-bottom:12px;">
-          <label for="inputAccHolder" style="font-weight:600; display:block; margin-bottom:6px;">Acc. Holder Name</label>
-          <input id="inputAccHolder" type="text" placeholder="Full name" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;" />
-        </div>
-
-        <div style="margin-bottom:12px;">
-          <label for="inputAccNumber" style="font-weight:600; display:block; margin-bottom:6px;">Acc. Number</label>
-          <input id="inputAccNumber" type="text" placeholder="03XXXXXXXXX or account number" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;" />
-        </div>
-
-        <div style="margin-bottom:12px;">
-          <label for="inputAmount" style="font-weight:600; display:block; margin-bottom:6px;">Amount (min 200 PKR)</label>
-          <input id="inputAmount" type="number" placeholder="200" min="200" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;" />
-        </div>
-
-        <hr style="border:0; border-top:1px solid #eee; margin:12px 0;" />
-
-        <div id="paymentDetails" style="font-size:0.95rem; line-height:1.3;">
-          <p style="margin:6px 0;"><strong>User UID:</strong> <span id="userID">...</span></p>
-          <p style="margin:8px 0; color:#b71c1c; font-weight:700;">
-            Note: Please include your <strong>User UID</strong> in the payment message so admin can verify it.
-          </p>
-          <p style="margin:6px 0;"><strong>Payment Method:</strong> Easypaisa</p>
-          <p style="margin:6px 0;"><strong>Acc. Holder:</strong> Adil Hayyat</p>
-          <p style="margin:6px 0;"><strong>Acc. Number:</strong> 03127196480</p>
-          <p style="margin-top:8px; color:green; font-weight:700;">✅ Balance will update after admin verification.</p>
-        </div>
-      </div>
-
-      <div class="modal-actions" style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end;">
+      <div class="modal-actions">
         <button id="paymentCancel" class="ghost">Cancel</button>
-        <button id="doneBtn" class="primary">Submit Payment Request</button>
+        <button id="doneBtn" class="primary">Done</button>
       </div>
     </div>
   </div>
 
-  <!-- Footer (desktop: admin email+icon left; copyright right) -->
-  <footer id="siteFooter" class="site-footer" role="contentinfo">
-    <div class="footer-content">
-      <div class="footer-left">
-        <a href="admin.html" class="footer-admin" title="Admin" aria-label="Admin">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 12c2.761 0 5-2.239 5-5s-2.239-5-5-5-5 2.239-5 5 2.239 5 5 5z" fill="#fff" opacity="0.95"/>
-            <path d="M3 21c0-3.866 3.134-7 7-7h4c3.866 0 7 3.134 7 7v1H3v-1z" fill="#fff" opacity="0.95"/>
-          </svg>
-        </a>
-        <span id="footerEmail" class="footer-email">adilhayat113@gmail.com</span>
-      </div>
-
-      <div class="footer-right">
-        © 2024 One-Wheely. All rights reserved
-      </div>
+  <!-- Footer -->
+  <footer>
+    <div class="footer-left">
+      <span class="admin-icon">👤</span>
+      <span id="footerEmail">adilhayat113@gmail.com</span>
+    </div>
+    <div class="footer-right">
+      <span>© 2024 One-Wheely. All rights reserved</span>
     </div>
   </footer>
 
-  <!-- Status message -->
   <div id="statusMessage" role="status" aria-live="polite"></div>
 
   <!-- Firebase & App scripts -->
@@ -139,34 +114,5 @@
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
-
-  <!-- Inline helpers (UX, non-conflicting) -->
-  <script>
-    (function(){
-      const modal = document.getElementById('paymentInstructions');
-      const closeBtn = document.getElementById('paymentClose');
-      const cancelBtn = document.getElementById('paymentCancel');
-      if (!modal) return;
-      function hideModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
-      function showModal(){ modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); const box=document.getElementById('paymentBox'); if(box) box.scrollTop=0; }
-      if (closeBtn) closeBtn.addEventListener('click', hideModal);
-      if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
-      window.addEventListener('click', (e)=>{ if (e.target===modal) hideModal(); });
-      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') hideModal(); });
-      window.__showPaymentModal = showModal; window.__hidePaymentModal = hideModal;
-    })();
-
-    (function(){
-      const hamburger=document.getElementById('hamburgerBtn');
-      const mobileMenu=document.getElementById('mobileMenu');
-      if(!hamburger||!mobileMenu) return;
-      hamburger.addEventListener('click', ()=>{
-        const open = mobileMenu.style.display==='block';
-        mobileMenu.style.display = open ? 'none' : 'block';
-        mobileMenu.setAttribute('aria-hidden', String(open? 'true':'false'));
-        hamburger.setAttribute('aria-expanded', String(!open));
-      });
-    })();
-  </script>
 </body>
 </html>
