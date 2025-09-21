@@ -1,7 +1,5 @@
-// auth.js (final with referral support)
-// Signup, Login, Logout, Auth check
-// - If signup form has input#refCode and a valid user UID is supplied, that referrer gets referralsCount++
-// - New user's document will include referCode: <uid> so user can share their UID as referral code
+// auth.js (final with referral + signup/login form split)
+// Handles Signup, Login, Logout, Auth check
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -37,7 +35,10 @@ function showStatus(msg, color = "red") {
     document.body.appendChild(statusBox);
   }
   statusBox.textContent = msg;
-  statusBox.style.background = color === "green" ? "rgba(40,167,69,0.9)" : "rgba(220,53,69,0.95)";
+  statusBox.style.background =
+    color === "green"
+      ? "rgba(40,167,69,0.9)"
+      : "rgba(220,53,69,0.95)";
   statusBox.style.display = "block";
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
@@ -47,57 +48,62 @@ function showStatus(msg, color = "red") {
 
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
-  const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
-  const password = (document.getElementById("password")?.value || "");
-  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional referral code (expected to be a UID)
+  const name = (document.getElementById("name")?.value || "").trim();
+  const username = (document.getElementById("username")?.value || "").trim();
+  const email = (document.getElementById("signupEmail")?.value || "").trim().toLowerCase();
+  const password = (document.getElementById("signupPassword")?.value || "");
+  const confirmPassword = (document.getElementById("confirmPassword")?.value || "");
+  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional
 
-  if (!email || !password) {
-    showStatus("⚠️ Please enter email and password.", "red");
+  if (!name || !username || !email || !password || !confirmPassword) {
+    showStatus("⚠️ Please fill all required fields.", "red");
     return;
   }
   if (password.length < 6) {
     showStatus("⚠️ Password must be at least 6 characters.", "red");
     return;
   }
+  if (password !== confirmPassword) {
+    showStatus("⚠️ Passwords do not match.", "red");
+    return;
+  }
 
   try {
-    // create firebase auth account
+    // Create firebase auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // prepare user doc with referCode = uid so users can share their uid as code
+    // Prepare Firestore doc
     const userRef = doc(db, "users", user.uid);
     const baseData = {
+      name,
+      username,
       email: user.email,
       balance: 0,
       createdAt: serverTimestamp(),
-      referCode: user.uid,      // user can share this UID as referral code
+      referCode: user.uid,      // shareable referral UID
       referralsCount: 0
     };
 
     await setDoc(userRef, baseData);
 
-    // If there is a referral code, check and apply
-    if (refCodeInput) {
+    // If referral code supplied, update referrer
+    if (refCodeInput && refCodeInput !== user.uid) {
       try {
-        // only proceed if refCodeInput is different from the new user's uid
-        if (refCodeInput !== user.uid) {
-          const referrerRef = doc(db, "users", refCodeInput);
-          const refSnap = await getDoc(referrerRef);
-          if (refSnap.exists()) {
-            // set referredBy on new user's doc
-            await updateDoc(userRef, {
-              referredBy: refCodeInput,
-              referredAt: serverTimestamp()
-            }).catch(()=>{ /* ignore */ });
+        const referrerRef = doc(db, "users", refCodeInput);
+        const refSnap = await getDoc(referrerRef);
+        if (refSnap.exists()) {
+          await updateDoc(userRef, {
+            referredBy: refCodeInput,
+            referredAt: serverTimestamp()
+          }).catch(() => {});
 
-            // increment referrer's referralsCount atomically
+          try {
+            await updateDoc(referrerRef, { referralsCount: increment(1) });
+          } catch (e) {
             try {
-              await updateDoc(referrerRef, { referralsCount: increment(1) });
-            } catch (e) {
-              // if referrer doc missing referralsCount field, try to set
-              try { await updateDoc(referrerRef, { referralsCount: 1 }); } catch(e2){ /* ignore */ }
-            }
+              await updateDoc(referrerRef, { referralsCount: 1 });
+            } catch (e2) {}
           }
         }
       } catch (e) {
@@ -106,7 +112,9 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     }
 
     showStatus("✅ Signup successful! Redirecting...", "green");
-    setTimeout(() => { window.location.href = "index.html"; }, 1200);
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 1200);
   } catch (error) {
     const code = error.code || "";
     if (code === "auth/email-already-in-use") {
@@ -122,8 +130,8 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
 
 /** ---------------- LOGIN ---------------- */
 document.getElementById("loginBtn")?.addEventListener("click", async () => {
-  const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
-  const password = (document.getElementById("password")?.value || "");
+  const email = (document.getElementById("loginEmail")?.value || "").trim().toLowerCase();
+  const password = (document.getElementById("loginPassword")?.value || "");
 
   if (!email || !password) {
     showStatus("⚠️ Please enter email and password.", "red");
@@ -144,7 +152,9 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
     }
 
     showStatus("✅ Login successful! Redirecting...", "green");
-    setTimeout(() => { window.location.href = "index.html"; }, 800);
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 800);
   } catch (error) {
     const code = error.code || "";
     console.error("Login error:", error);
