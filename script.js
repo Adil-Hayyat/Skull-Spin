@@ -73,6 +73,26 @@ for (let i = 0; i < SECTOR_COUNT; i++) {
   sectors.push({ prize: prizes[i], startDeg: start, endDeg: end, centerDeg: center });
 }
 
+/* ==========================
+   Spin sound setup
+   ==========================
+   - Place `wheel.mp3` in the same folder as this script (or change path below)
+   - We create a single global Audio instance to avoid duplicates
+*/
+if (!window.__spinSound) {
+  try {
+    const a = new Audio('./wheel.mp3'); // <-- ensure wheel.mp3 exists at this path
+    a.preload = 'auto';
+    a.volume = 0.7; // adjust default volume (0.0 - 1.0)
+    a.loop = false; // we'll enable loop at play-time
+    window.__spinSound = a;
+  } catch (e) {
+    // ignore - audio unavailable
+    window.__spinSound = null;
+  }
+}
+const spinSound = window.__spinSound || null;
+
 // ===== responsive canvas helpers =====
 function resizeCanvasToContainer() {
   const rect = gameWrapper ? gameWrapper.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
@@ -181,7 +201,7 @@ function updateUserInfoDisplay() {
   if (footerEmail) footerEmail.textContent = ADMIN_EMAIL; // admin email fixed in footer
 }
 
-// ===== Wheel animation & result handling =====
+// ===== Wheel animation & result handling (with sound) =====
 async function spinWheel(cost = 10) {
   if (cost > 0 && balance < cost) {
     showStatus("⚠️ Not enough balance!", "error"); return null;
@@ -196,8 +216,20 @@ async function spinWheel(cost = 10) {
     const rounds = 5 + Math.floor(Math.random() * 3);
     const randomExtra = Math.random() * 360;
     const spinAngle = rounds * 360 + randomExtra;
-    const spinTimeTotal = 5000;
+    const spinTimeTotal = 5000; // ms (as in your provided file)
     const startTime = performance.now();
+
+    // Start sound (loop while spinning)
+    if (spinSound) {
+      try {
+        spinSound.loop = true;
+        spinSound.currentTime = 0;
+        const p = spinSound.play();
+        if (p && typeof p.catch === 'function') p.catch(()=>{/* ignore */});
+      } catch (e) {
+        // ignore audio play errors
+      }
+    }
 
     function step(now) {
       const spinTime = now - startTime;
@@ -209,6 +241,15 @@ async function spinWheel(cost = 10) {
 
       if (spinTime < spinTimeTotal) {
         requestAnimationFrame(step); return;
+      }
+
+      // stop sound when animation ends
+      if (spinSound) {
+        try {
+          spinSound.pause();
+          spinSound.currentTime = 0;
+          spinSound.loop = false;
+        } catch (e) { /* ignore */ }
       }
 
       const finalDegrees = spinAngle % 360;
