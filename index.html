@@ -1,12 +1,201 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <!-- Meta viewport already present but keep recommended settings -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>One-Wheely | Game</title>
-  <link rel="stylesheet" href="style.css">
 
-  <!-- Firebase Auth check -->
+  <!-- External stylesheet (your main CSS) -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Minimal responsive CSS here so file works even if style.css hasn't been updated yet -->
+  <style>
+    /* Mobile-first responsive helpers */
+    :root {
+      --max-game-width: 900px;
+      --accent: #e14a3c;
+      --primary-bg: #0634ec;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background: #f6f7fb;
+      color: #111;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: #fff;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    header h2 { margin: 0; font-size: 1.15rem; color: #222; }
+    header .header-right { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+
+    .container {
+      width: calc(100% - 24px);
+      max-width: var(--max-game-width);
+      margin: 18px auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Game wrapper: center on page and allow scaling */
+    #gameWrapper {
+      position: relative;
+      margin: 0 auto;
+      width: 100%;
+      max-width: 640px;
+      aspect-ratio: 1 / 1; /* keeps square area */
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, rgba(6,52,236,0.03), rgba(255,255,255,0.0));
+      border-radius: 12px;
+      padding: 12px;
+      box-sizing: border-box;
+    }
+
+    /* Make canvas scale with container */
+    canvas#wheel {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border-radius: 10px;
+      touch-action: none; /* prevent default browser gestures while playing */
+      -webkit-user-select: none;
+      user-select: none;
+      background: transparent;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin: 14px auto 0 auto;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .button-group button,
+    header button,
+    #paymentInstructions button,
+    #popupContent button {
+      cursor: pointer;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(225,74,60,0.12);
+      transition: transform .08s ease, box-shadow .12s ease;
+      min-height: 44px;
+    }
+    .button-group button:active,
+    header button:active { transform: translateY(1px); }
+
+    /* Popup overlay */
+    .overlay {
+      display: none; /* show via JS by setting style.display = 'flex' */
+      align-items: center;
+      justify-content: center;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 1000;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    #popupContent {
+      width: 100%;
+      max-width: 420px;
+      background: var(--primary-bg);
+      color: #fff;
+      padding: 18px;
+      border-radius: 12px;
+      text-align: center;
+    }
+    #popupContent p { margin: 8px 0 14px; font-size: 1.05rem; }
+
+    /* Payment modal */
+    #paymentInstructions {
+      display: none;
+      position: fixed;
+      z-index: 1100;
+      inset: 0;
+      overflow-y: auto;
+      padding: 20px;
+      box-sizing: border-box;
+      align-items: center;
+      justify-content: center;
+    }
+    #paymentBox {
+      width: 100%;
+      max-width: 520px;
+      margin: 32px auto;
+      background: #fff;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+      box-sizing: border-box;
+    }
+    #paymentBox h3 { margin-top: 0; }
+    #paymentBox input[type="text"],
+    #paymentBox input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #d6d6d6;
+      box-sizing: border-box;
+      margin-top: 6px;
+      margin-bottom: 12px;
+      font-size: 1rem;
+    }
+    #paymentDetails p { margin: 6px 0; line-height: 1.3; font-size: 0.95rem; }
+
+    /* status message */
+    #statusMessage {
+      display: none;
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      z-index: 2000;
+      background: #222;
+      color: #fff;
+    }
+
+    /* Small screens adjustments */
+    @media (max-width: 540px) {
+      header { padding: 10px 12px; }
+      header h2 { font-size: 1rem; }
+      .header-right { gap:6px; }
+      .button-group { gap: 8px; margin-top: 12px; padding: 0 6px; }
+      .button-group button { padding: 12px 14px; min-width: 44%; font-size: 0.98rem; }
+      #paymentBox { padding: 14px; border-radius: 12px; }
+      #popupContent { padding: 16px; }
+    }
+
+    @media (min-width: 901px) {
+      #gameWrapper { max-width: 700px; }
+      .button-group button { padding: 12px 20px; }
+    }
+  </style>
+
+  <!-- Firebase Auth check (keeps redirect logic) -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
@@ -15,75 +204,169 @@
     onAuthStateChanged(auth, (user) => {
       if (!user) {
         window.location.href = "auth.html";
+      } else {
+        // show user displayName or email if you want
+        const ui = document.getElementById('userInfo');
+        if (ui) ui.textContent = (user.displayName || user.email || 'Player');
+        const uidSpan = document.getElementById('userID');
+        if (uidSpan) uidSpan.textContent = user.uid;
       }
     });
   </script>
 </head>
+
 <body>
   <header>
     <h2>One-Wheely</h2>
-    <div>
-      <!-- ✅ Balance + User Info -->
-      <span id="userInfo" style="margin-right:15px; font-weight:bold; color:#884dff;">Loading...</span>
-      <button id="addBalanceBtn">Add Balance</button>
-      <button id="withdrawBtn">Withdraw</button>
-      <button id="logoutBtn">Logout</button>
+    <div class="header-right">
+      <!-- Balance + User Info -->
+      <span id="userInfo" style="font-weight:700; color:#6b46ff;">Loading...</span>
+      <button id="addBalanceBtn" type="button" aria-label="Add Balance">Add Balance</button>
+      <button id="withdrawBtn" type="button" aria-label="Withdraw">Withdraw</button>
+      <button id="logoutBtn" type="button" aria-label="Logout">Logout</button>
     </div>
   </header>
 
-  <div id="gameWrapper" style="position:relative; display:inline-block;">
-    <!-- 🎡 Wheel canvas -->
-    <canvas id="wheel" width="500" height="500"></canvas>
-  </div>
+  <main class="container" role="main">
+    <section id="gameArea">
+      <div id="gameWrapper" aria-label="Game area">
+        <!-- Wheel canvas (responsive with CSS width/height); script.js should handle devicePixelRatio sizing -->
+        <canvas id="wheel" width="800" height="800" aria-label="Game Wheel"></canvas>
+      </div>
 
-  <div class="button-group">
-    <button id="spinBtn">1-SPIN (Rs: 10)</button>
-    <button id="multiSpinBtn">5-SPIN (Rs:50)</button>
-  </div>
+      <div class="button-group" role="group" aria-label="Spin controls">
+        <button id="spinBtn" type="button">1-SPIN (Rs: 10)</button>
+        <button id="multiSpinBtn" type="button">5-SPIN (Rs:50)</button>
+      </div>
+    </section>
+  </main>
 
-  <!-- Game Result Popup -->
-  <div id="popup" style="display:none; align-items:center; justify-content:center; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000;">
-    <div id="popupContent" style="background:#0634ec; padding:20px; border-radius:10px; text-align:center;">
-      <p id="prizeText"></p>
-      <button onclick="closePopup()">OK</button>
+  <!-- Game Result Popup (overlay) -->
+  <div id="popup" class="overlay" role="dialog" aria-modal="true" aria-hidden="true">
+    <div id="popupContent">
+      <p id="prizeText">You won: —</p>
+      <button id="popupOkBtn" type="button" onclick="closePopup()">OK</button>
     </div>
   </div>
 
-  <!-- Add Balance Popup -->
-  <div id="paymentInstructions" style="display:none; text-align:center; max-width:500px; width:90%; padding:30px; border-radius:15px; background:#fff; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); box-shadow:0 4px 12px rgba(0,0,0,0.2); z-index:1000;">
-    <h3>💳 Payment Instructions</h3>
-    <div style="margin-bottom:15px; text-align:left;">
-      <label>Acc. Holder Name:</label><br>
-      <input type="text" id="inputAccHolder" placeholder="Enter your name" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
+  <!-- Add Balance Popup (modal) -->
+  <div id="paymentInstructions" aria-hidden="true">
+    <div id="paymentBox" role="dialog" aria-modal="true" aria-label="Payment instructions">
+      <h3>💳 Payment Instructions</h3>
 
-      <label>Acc. Number:</label><br>
-      <input type="text" id="inputAccNumber" placeholder="Enter your number" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;"><br><br>
+      <div style="margin-bottom:14px; text-align:left;">
+        <label for="inputAccHolder">Acc. Holder Name:</label>
+        <input id="inputAccHolder" type="text" placeholder="Enter your name" />
 
-      <label>Amount (min 200 PKR):</label><br>
-      <input type="number" id="inputAmount" placeholder="200" style="width:100%; padding:8px; border-radius:8px; border:1px solid #ccc;" min="200">
+        <label for="inputAccNumber">Acc. Number:</label>
+        <input id="inputAccNumber" type="text" placeholder="Enter your number" />
+
+        <label for="inputAmount">Amount (min 200 PKR):</label>
+        <input id="inputAmount" type="number" placeholder="200" min="200" />
+      </div>
+
+      <hr />
+
+      <div id="paymentDetails">
+        <p><strong>User UID:</strong> <span id="userID">...</span></p>
+        <p style="color:red; font-weight:700; margin-top:6px; font-size:0.92rem;">
+          Note: Please enter the User UID in the "Add a message" field when making payment. Payments cannot be verified and are non-refundable without the User UID.
+        </p>
+
+        <p><strong>Payment Details:</strong></p>
+        <p>Easypaisa</p>
+        <p>Acc. Holder Name: <strong>Adil Hayyat</strong></p>
+        <p>Acc. Number: <strong>03127196480</strong></p>
+        <p style="color:green; font-weight:700;">✅ Balance will update automatically after verification.</p>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end;">
+        <button id="paymentCancel" type="button" style="background:#888;">Cancel</button>
+        <button id="doneBtn" type="button">Done</button>
+      </div>
     </div>
-    <hr>
-    <div id="paymentDetails" style="text-align:left;">
-      <p><b>User UID:</b> <span id="userID">...</span></p>
-      <p style="color:red; font-weight:bold; margin-top:5px;">
-        Note: Please enter the User UID below the "Enter Amount" section in the "Add a message here" field when making your payment. Payments cannot be verified and are non-refundable without the User UID..
-      </p>
-      <p><b>Payment Details:</b></p>
-      <p>Easypaisa</p>
-      <p>Acc. Holder Name: <b>Adil Hayyat</b></p>
-      <p>Acc. Number: <b>03127196480</b></p>
-      <p style="color:green;">✅ Balance will update automatically after verification.</p>
-    </div>
-    <button id="doneBtn" style="margin-top:15px; padding:10px 15px; background:#e14a3c; color:#fff; border:none; border-radius:8px; cursor:pointer;">Done</button>
   </div>
 
   <!-- Status message -->
-  <div id="statusMessage" style="display:none; position:fixed; bottom:20px; left:50%; transform:translateX(-50%); padding:12px 20px; border-radius:8px; font-weight:bold; z-index:2000;"></div>
+  <div id="statusMessage" role="status" aria-live="polite"></div>
 
-  <!-- Firebase configs -->
+  <!-- Firebase and app scripts -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
+
+  <!-- Main game script (make sure script.js contains resize & pointer handling) -->
   <script type="module" src="script.js"></script>
+
+  <!-- Small inline helpers for toggling modals (keeps interaction snappy) -->
+  <script>
+    // Basic modal open/close helpers (script.js may also control these)
+    const popup = document.getElementById('popup');
+    const popupOkBtn = document.getElementById('popupOkBtn');
+    const paymentModal = document.getElementById('paymentInstructions');
+    const paymentCancel = document.getElementById('paymentCancel');
+    const addBalanceBtn = document.getElementById('addBalanceBtn');
+
+    window.closePopup = function() {
+      if (popup) {
+        popup.style.display = 'none';
+        popup.setAttribute('aria-hidden', 'true');
+      }
+    };
+
+    // show popup with message
+    window.showPopup = function(message) {
+      const prizeText = document.getElementById('prizeText');
+      if (prizeText) prizeText.textContent = message;
+      if (popup) {
+        popup.style.display = 'flex';
+        popup.setAttribute('aria-hidden', 'false');
+      }
+    };
+
+    // Payment modal show/hide
+    function showPaymentModal() {
+      if (paymentModal) {
+        paymentModal.style.display = 'flex';
+        paymentModal.setAttribute('aria-hidden', 'false');
+        // focus first input for accessibility
+        const acc = document.getElementById('inputAccHolder');
+        if (acc) acc.focus();
+      }
+    }
+    function hidePaymentModal() {
+      if (paymentModal) {
+        paymentModal.style.display = 'none';
+        paymentModal.setAttribute('aria-hidden', 'true');
+      }
+    }
+
+    if (addBalanceBtn) addBalanceBtn.addEventListener('click', showPaymentModal);
+    if (paymentCancel) paymentCancel.addEventListener('click', hidePaymentModal);
+    if (popupOkBtn) popupOkBtn.addEventListener('click', closePopup);
+
+    // small status helper
+    function showStatus(msg, timeout = 3000) {
+      const s = document.getElementById('statusMessage');
+      if (!s) return;
+      s.textContent = msg;
+      s.style.display = 'block';
+      setTimeout(() => { s.style.display = 'none'; }, timeout);
+    }
+    window.showStatus = showStatus;
+
+    // Prevent gestures interfering on mobile (pinch/drag) while interacting with canvas
+    const wheelCanvas = document.getElementById('wheel');
+    if (wheelCanvas) {
+      wheelCanvas.addEventListener('touchstart', (e) => {
+        // Stop propagation only when interacting with game (helps page not to scroll accidentally)
+        e.stopPropagation();
+      }, { passive: false });
+
+      // Convert mouse events to pointer events (if script.js hasn't done it)
+      // We won't block if script.js already attaches pointer listeners
+      wheelCanvas.style.touchAction = 'none';
+    }
+  </script>
 </body>
 </html>
