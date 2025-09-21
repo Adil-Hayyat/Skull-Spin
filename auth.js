@@ -1,5 +1,7 @@
-// auth.js (final without username)
+// auth.js (final with referral support)
 // Signup, Login, Logout, Auth check
+// - If signup form has input#refCode and a valid user UID is supplied, that referrer gets referralsCount++
+// - New user's document will include referCode: <uid> so user can share their UID as referral code
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -13,7 +15,9 @@ import {
   doc,
   setDoc,
   getDoc,
-  serverTimestamp
+  serverTimestamp,
+  updateDoc,
+  increment
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /** Show status messages */
@@ -22,10 +26,18 @@ function showStatus(msg, color = "red") {
   if (!statusBox) {
     statusBox = document.createElement("p");
     statusBox.id = "authStatus";
+    statusBox.style.position = "fixed";
+    statusBox.style.top = "12px";
+    statusBox.style.right = "12px";
+    statusBox.style.zIndex = "9999";
+    statusBox.style.padding = "8px 12px";
+    statusBox.style.borderRadius = "8px";
+    statusBox.style.background = "rgba(0,0,0,0.6)";
+    statusBox.style.color = "#fff";
     document.body.appendChild(statusBox);
   }
   statusBox.textContent = msg;
-  statusBox.style.color = color;
+  statusBox.style.background = color === "green" ? "rgba(40,167,69,0.9)" : "rgba(220,53,69,0.95)";
   statusBox.style.display = "block";
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
@@ -37,6 +49,7 @@ function showStatus(msg, color = "red") {
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
+  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional referral code (expected to be a UID)
 
   if (!email || !password) {
     showStatus("⚠️ Please enter email and password.", "red");
@@ -48,17 +61,49 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   }
 
   try {
-    // ✅ create firebase auth account
+    // create firebase auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // ✅ save user profile in Firestore
+    // prepare user doc with referCode = uid so users can share their uid as code
     const userRef = doc(db, "users", user.uid);
-    await setDoc(userRef, {
+    const baseData = {
       email: user.email,
       balance: 0,
-      createdAt: serverTimestamp()
-    });
+      createdAt: serverTimestamp(),
+      referCode: user.uid,      // user can share this UID as referral code
+      referralsCount: 0
+    };
+
+    await setDoc(userRef, baseData);
+
+    // If there is a referral code, check and apply
+    if (refCodeInput) {
+      try {
+        // only proceed if refCodeInput is different from the new user's uid
+        if (refCodeInput !== user.uid) {
+          const referrerRef = doc(db, "users", refCodeInput);
+          const refSnap = await getDoc(referrerRef);
+          if (refSnap.exists()) {
+            // set referredBy on new user's doc
+            await updateDoc(userRef, {
+              referredBy: refCodeInput,
+              referredAt: serverTimestamp()
+            }).catch(()=>{ /* ignore */ });
+
+            // increment referrer's referralsCount atomically
+            try {
+              await updateDoc(referrerRef, { referralsCount: increment(1) });
+            } catch (e) {
+              // if referrer doc missing referralsCount field, try to set
+              try { await updateDoc(referrerRef, { referralsCount: 1 }); } catch(e2){ /* ignore */ }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Referral handling error (signup):", e);
+      }
+    }
 
     showStatus("✅ Signup successful! Redirecting...", "green");
     setTimeout(() => { window.location.href = "index.html"; }, 1200);
@@ -86,11 +131,9 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   }
 
   try {
-    // ✅ sign in firebase auth
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const user = credential.user;
 
-    // ✅ check firestore profile exists
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
