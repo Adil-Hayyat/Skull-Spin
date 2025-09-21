@@ -3,136 +3,137 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Skull-Spin | Auth</title>
+  <title>One-Wheely | Auth</title>
   <link rel="stylesheet" href="style.css">
+
   <style>
+    /* Layout */
     body {
       margin: 0;
       font-family: Arial, sans-serif;
-      background: #143ad3;
-      color: #fff;
       display: flex;
-      flex-direction: column;
-      min-height: 100vh;
+      height: 100vh;
+      background: #f4f7fa;
     }
-    header {
-      background: #0c255c;
-      padding: 16px;
-      text-align: center;
-    }
-    header h2 { margin: 0; }
 
     .auth-container {
-      flex: 1;
       display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
+      flex: 1;
     }
+
     .auth-box {
-      background: #fff;
-      color: #000;
-      display: flex;
-      border-radius: 10px;
-      overflow: hidden;
-      max-width: 900px;
-      width: 100%;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    }
-    .auth-column {
       flex: 1;
-      padding: 30px 25px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 40px;
     }
-    .auth-column h3 {
-      margin-top: 0;
+
+    .signup-box {
+      background: #fff;
+      border-right: 2px solid #eee;
+    }
+
+    .login-box {
+      background: #fafafa;
+    }
+
+    h2 {
       margin-bottom: 20px;
-      font-size: 1.4rem;
-      color: #143ad3;
+      color: #333;
     }
-    .auth-column input {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 14px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 0.95rem;
+
+    label {
+      font-size: 14px;
+      margin-bottom: 6px;
+      color: #555;
     }
-    .auth-column button {
+
+    input {
       width: 100%;
       padding: 12px;
-      background: #884dff;
-      color: #fff;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #007bff;
       border: none;
       border-radius: 6px;
+      color: white;
+      font-size: 16px;
       cursor: pointer;
-      font-size: 1rem;
-      font-weight: bold;
-    }
-    .auth-column button:hover { background: #0c255c; }
-
-    /* Mobile responsive */
-    @media (max-width: 768px) {
-      .auth-box { flex-direction: column; }
     }
 
-    /* Status message */
-    #authStatus {
-      display: none;
+    button:hover {
+      background: #0056b3;
+    }
+
+    .note {
+      margin-top: 10px;
+      font-size: 13px;
+      color: #666;
       text-align: center;
-      margin-top: 15px;
-      font-weight: bold;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .auth-container {
+        flex-direction: column;
+      }
+      .signup-box, .login-box {
+        border: none;
+        border-bottom: 2px solid #eee;
+      }
     }
   </style>
-
-  <!-- Firebase Auth check (keeps logged-in users away from auth page) -->
-  <script type="module">
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { app } from "./firebase-config.js";
-    const auth = getAuth(app);
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        window.location.href = "index.html";
-      }
-    });
-  </script>
 </head>
 <body>
-  <header>
-    <h2>Skull-Spin</h2>
-  </header>
-
-  <!-- Auth container -->
   <div class="auth-container">
-    <div class="auth-box">
+    <!-- Signup Left -->
+    <div class="auth-box signup-box">
+      <h2>Create Account</h2>
+      <label for="name">Full Name</label>
+      <input id="name" type="text" placeholder="Enter your name" />
 
-      <!-- Sign Up Column -->
-      <div class="auth-column" style="background:#f5f7ff;">
-        <h3>Create Account</h3>
-        <input type="text" id="name" placeholder="Full Name">
-        <input type="text" id="username" placeholder="Username">
-        <input type="email" id="signupEmail" placeholder="Email">
-        <input type="password" id="signupPassword" placeholder="Password (6+ characters)">
-        <input type="password" id="confirmPassword" placeholder="Confirm Password">
-        <!-- ✅ Referral Code Added -->
-        <input type="text" id="refCode" placeholder="Referral Code (Optional)">
-        <button id="signupBtn">Sign Up</button>
-      </div>
+      <label for="username">Username</label>
+      <input id="username" type="text" placeholder="Choose a username" />
 
-      <!-- Login Column -->
-      <div class="auth-column">
-        <h3>Log In</h3>
-        <input type="email" id="loginEmail" placeholder="Email">
-        <input type="password" id="loginPassword" placeholder="Password">
-        <button id="loginBtn">Log In</button>
-      </div>
+      <label for="signupEmail">Email</label>
+      <input id="signupEmail" type="email" placeholder="Enter your email" />
+
+      <label for="signupPassword">Password</label>
+      <input id="signupPassword" type="password" placeholder="Enter password" />
+
+      <label for="confirmPassword">Confirm Password</label>
+      <input id="confirmPassword" type="password" placeholder="Confirm password" />
+
+      <label for="refCode">Referral Code (Optional)</label>
+      <input id="refCode" type="text" placeholder="Enter referral code" />
+
+      <button id="signupBtn">Sign Up</button>
+      <p class="note">Already have an account? Use the login section →</p>
+    </div>
+
+    <!-- Login Right -->
+    <div class="auth-box login-box">
+      <h2>Login</h2>
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="email" placeholder="Enter your email" />
+
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" placeholder="Enter password" />
+
+      <button id="loginBtn">Login</button>
+      <p class="note">Don’t have an account? Use the signup section ←</p>
     </div>
   </div>
 
-  <!-- ✅ Status message -->
-  <p id="authStatus"></p>
-
-  <!-- Firebase configs + auth.js -->
-  <script type="module" src="firebase-config.js"></script>
+  <!-- Firebase Auth check (keeps logged-in users away from auth page) -->
   <script type="module" src="auth.js"></script>
 </body>
 </html>
