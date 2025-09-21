@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>One-Wheely | Auth</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Firebase Auth check (redirect if logged in) -->
+  <!-- Firebase Auth check (keeps logged-in users away from auth page) -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
     import { app } from "./firebase-config.js";
@@ -23,21 +23,20 @@
   </header>
 
   <!-- Auth form -->
-  <div style="text-align:center; margin-top:100px;">
+  <div style="text-align:center; margin-top:120px;">
 
     <input type="email" id="email" placeholder="Email" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
 
     <input type="password" id="password" placeholder="Enter 6+ character Password" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
 
-    <input type="text" id="referralCode" placeholder="Referral Code (Optional)" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
-
     <button id="signupBtn" style="padding:12px 40px; margin-top:10px; margin-right:8px; border:none; background:#884dff; color:white; border-radius:8px; cursor:pointer;">Sign Up</button>
     <button id="loginBtn" style="padding:12px 40px; margin-top:10px; border:none; background:#884dff; color:white; border-radius:8px; cursor:pointer;">Log In</button>
   </div>
 
-  <!-- Status message -->
+  <!-- ✅ Status message (success/error) -->
   <p id="authStatus" style="display:none; font-weight:bold; text-align:center; margin-top:15px;"></p>
 
+  <!-- Firebase configs + auth.js -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
 </body>

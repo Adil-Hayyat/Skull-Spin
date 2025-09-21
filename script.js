@@ -1,6 +1,5 @@
-// script.js (responsive + mobile menu + original game logic + referral reward handling)
-// - When referred user's balance crosses thresholds, award referrer (20 or 50) once per referred user per threshold.
-// - Uses 'referralRewards' collection with doc id "<referrer>_<referred>_<type>" to prevent duplicates.
+// script.js (responsive + mobile menu + original game logic)
+// Footer admin email left; mobile shows user email in menu; footer email remains admin constant.
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -15,8 +14,7 @@ import {
   setDoc,
   getDocs,
   query,
-  where,
-  increment
+  where
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
 
@@ -58,7 +56,6 @@ const footerEmail = document.getElementById("footerEmail");
 const ADMIN_EMAIL = "adilhayat113@gmail.com";
 
 let balance = 0;
-let prevBalance = 0; // to detect threshold crossing
 let currentUser = null;
 let currentRotationRad = 0;
 
@@ -77,17 +74,20 @@ for (let i = 0; i < SECTOR_COUNT; i++) {
 }
 
 /* ==========================
-   Spin sound setup (unchanged)
+   Spin sound setup
    ==========================
+   - Place `wheel.mp3` in the same folder as this script (or change path below)
+   - We create a single global Audio instance to avoid duplicates
 */
 if (!window.__spinSound) {
   try {
-    const a = new Audio('./wheel.mp3');
+    const a = new Audio('./wheel.mp3'); // <-- ensure wheel.mp3 exists at this path
     a.preload = 'auto';
-    a.volume = 0.7;
-    a.loop = false;
+    a.volume = 0.7; // adjust default volume (0.0 - 1.0)
+    a.loop = false; // we'll enable loop at play-time
     window.__spinSound = a;
   } catch (e) {
+    // ignore - audio unavailable
     window.__spinSound = null;
   }
 }
@@ -182,75 +182,6 @@ function getSectorIndexFromStopDegrees(finalDegrees) {
   return index;
 }
 
-/* ==========================
-   Referral reward helpers
-   ==========================
-   - referralRewards collection used to store one-off rewards per pair+type
-   - doc id format: "<referrerUid>_<referredUid>_<type>" where type "200" or "1000"
-*/
-async function awardReferralIfEligible(referredUid, oldBal, newBal, userDocData) {
-  try {
-    // ensure there is a referrer recorded
-    const referredBy = (userDocData && userDocData.referredBy) ? userDocData.referredBy : null;
-    if (!referredBy) return;
-
-    // prevent self-referral (shouldn't happen) and ensure different UIDs
-    if (referredBy === referredUid) return;
-
-    const referrerUid = referredBy;
-    // decide which reward (prefer 1000+ if crossed)
-    const crossed1000 = (oldBal < 1000 && newBal >= 1000);
-    const crossed200 = (oldBal < 200 && newBal >= 200 && newBal < 1000);
-
-    if (!crossed1000 && !crossed200) return;
-
-    // pick reward and doc id
-    const type = crossed1000 ? "1000" : "200";
-    const rewardAmount = crossed1000 ? 50 : 20;
-    const rewardDocId = `${referrerUid}_${referredUid}_${type}`;
-    const rewardRef = doc(db, "referralRewards", rewardDocId);
-
-    const existing = await getDoc(rewardRef);
-    if (existing.exists()) {
-      // already rewarded for this threshold
-      return;
-    }
-
-    // Atomic update to referrer's balance
-    const refUserRef = doc(db, "users", referrerUid);
-    try {
-      await updateDoc(refUserRef, { balance: increment(rewardAmount) });
-    } catch (e) {
-      // If updateDoc fails because field missing, fallback: set doc (best-effort)
-      try {
-        const rSnap = await getDoc(refUserRef);
-        const rBal = rSnap.exists() ? (rSnap.data().balance || 0) : 0;
-        await updateDoc(refUserRef, { balance: rBal + rewardAmount });
-      } catch (e2) {
-        console.error("Failed to credit referrer balance:", e2);
-      }
-    }
-
-    // record the reward operation so it's not repeated
-    try {
-      await setDoc(rewardRef, {
-        referrerUid,
-        referredUid,
-        type,
-        rewardAmount,
-        createdAt: serverTimestamp()
-      });
-    } catch (e) {
-      console.error("Failed to write referralRewards record:", e);
-    }
-
-    // Optional: notify user in-app (if referrer is online, their snapshot will update and UI will reflect new balance)
-    console.log(`Referral reward: ${rewardAmount} credited to ${referrerUid} for referred ${referredUid} (type ${type})`);
-  } catch (err) {
-    console.error("awardReferralIfEligible error:", err);
-  }
-}
-
 // ===== Firebase balance helpers =====
 async function saveBalance() {
   if (!currentUser) return;
@@ -262,11 +193,12 @@ async function saveBalance() {
   }
 }
 function updateUserInfoDisplay() {
+  // header balance only, mobile balance, mobile email show user email, footer stays admin email
   if (headerBalance) headerBalance.textContent = `Rs: ${balance}`;
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
   if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : '...';
   if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
-  if (footerEmail) footerEmail.textContent = ADMIN_EMAIL;
+  if (footerEmail) footerEmail.textContent = ADMIN_EMAIL; // admin email fixed in footer
 }
 
 // ===== Wheel animation & result handling (with sound) =====
@@ -284,7 +216,7 @@ async function spinWheel(cost = 10) {
     const rounds = 5 + Math.floor(Math.random() * 3);
     const randomExtra = Math.random() * 360;
     const spinAngle = rounds * 360 + randomExtra;
-    const spinTimeTotal = 5000; // ms
+    const spinTimeTotal = 5000; // ms (as in your provided file)
     const startTime = performance.now();
 
     // Start sound (loop while spinning)
@@ -294,7 +226,9 @@ async function spinWheel(cost = 10) {
         spinSound.currentTime = 0;
         const p = spinSound.play();
         if (p && typeof p.catch === 'function') p.catch(()=>{/* ignore */});
-      } catch (e) {}
+      } catch (e) {
+        // ignore audio play errors
+      }
     }
 
     function step(now) {
@@ -521,40 +455,19 @@ onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
     const userRef = doc(db, "users", user.uid);
-
-    // get initial snapshot once to initialize prevBalance
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
-      await setDoc(userRef, { email: user.email, balance: 0, referCode: user.uid, referralsCount: 0 });
+      await setDoc(userRef, { email: user.email, balance: 0 });
       balance = 0;
-      prevBalance = 0;
     } else {
       balance = snap.data().balance || 0;
-      prevBalance = balance;
     }
     updateUserInfoDisplay();
-
-    // listen for changes and detect balance increases to award referrer
-    onSnapshot(userRef, async (docSnap) => {
-      if (!docSnap.exists()) return;
-      const data = docSnap.data();
-      const newBal = data.balance || 0;
-      const oldBal = typeof prevBalance === "number" ? prevBalance : 0;
-
-      // if balance changed (increased), check referral awarding rules
-      if (newBal !== oldBal) {
-        // call award check (pass entire doc data so we can read referredBy)
-        try {
-          await awardReferralIfEligible(user.uid, oldBal, newBal, data);
-        } catch (e) {
-          console.error("awardReferralIfEligible error call:", e);
-        }
+    onSnapshot(userRef, (docSnap) => {
+      if (docSnap.exists()) {
+        balance = docSnap.data().balance || 0;
+        updateUserInfoDisplay();
       }
-
-      // update local state
-      prevBalance = newBal;
-      balance = newBal;
-      updateUserInfoDisplay();
     });
   } else {
     currentUser = null;
