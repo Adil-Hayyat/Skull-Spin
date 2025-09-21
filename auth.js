@@ -35,13 +35,32 @@ function showStatus(msg, color = "red") {
     document.body.appendChild(statusBox);
   }
   statusBox.textContent = msg;
-  statusBox.style.background = color === "green" ? "rgba(40,167,69,0.9)" : "rgba(220,53,69,0.95)";
+  statusBox.style.background =
+    color === "green"
+      ? "rgba(40,167,69,0.9)"
+      : "rgba(220,53,69,0.95)";
   statusBox.style.display = "block";
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
     statusBox.style.display = "none";
   }, 5000);
 }
+
+/** ---------------- REFERRAL HANDLING ---------------- */
+// Extract ?ref=uid from URL
+function getReferralFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("ref") || "";
+}
+
+// Auto-fill referral code field if exists
+window.addEventListener("DOMContentLoaded", () => {
+  const urlRef = getReferralFromURL();
+  if (urlRef) {
+    const input = document.getElementById("refCode");
+    if (input) input.value = urlRef;
+  }
+});
 
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
@@ -50,7 +69,12 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   const email = (document.getElementById("signupEmail")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("signupPassword")?.value || "");
   const confirmPassword = (document.getElementById("confirmPassword")?.value || "");
-  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional referral code
+
+  // Referral: input or URL
+  let refCodeInput = (document.getElementById("refCode")?.value || "").trim();
+  if (!refCodeInput) {
+    refCodeInput = getReferralFromURL();
+  }
 
   // validations
   if (!name || !username || !email || !password || !confirmPassword) {
