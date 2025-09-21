@@ -1,5 +1,5 @@
-// auth.js (final with referral + signup/login form split)
-// Handles Signup, Login, Logout, Auth check
+// auth.js (with Name + Username save + referral support)
+// Signup, Login, Logout, Auth check
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -35,10 +35,7 @@ function showStatus(msg, color = "red") {
     document.body.appendChild(statusBox);
   }
   statusBox.textContent = msg;
-  statusBox.style.background =
-    color === "green"
-      ? "rgba(40,167,69,0.9)"
-      : "rgba(220,53,69,0.95)";
+  statusBox.style.background = color === "green" ? "rgba(40,167,69,0.9)" : "rgba(220,53,69,0.95)";
   statusBox.style.display = "block";
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
@@ -49,31 +46,32 @@ function showStatus(msg, color = "red") {
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
   const name = (document.getElementById("name")?.value || "").trim();
-  const username = (document.getElementById("username")?.value || "").trim();
+  const username = (document.getElementById("username")?.value || "").trim().toLowerCase();
   const email = (document.getElementById("signupEmail")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("signupPassword")?.value || "");
   const confirmPassword = (document.getElementById("confirmPassword")?.value || "");
-  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional
+  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional referral code
 
+  // validations
   if (!name || !username || !email || !password || !confirmPassword) {
-    showStatus("⚠️ Please fill all required fields.", "red");
-    return;
-  }
-  if (password.length < 6) {
-    showStatus("⚠️ Password must be at least 6 characters.", "red");
+    showStatus("⚠️ Please fill all fields.", "red");
     return;
   }
   if (password !== confirmPassword) {
     showStatus("⚠️ Passwords do not match.", "red");
     return;
   }
+  if (password.length < 6) {
+    showStatus("⚠️ Password must be at least 6 characters.", "red");
+    return;
+  }
 
   try {
-    // Create firebase auth account
+    // create firebase auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Prepare Firestore doc
+    // prepare user doc with all details
     const userRef = doc(db, "users", user.uid);
     const baseData = {
       name,
@@ -81,13 +79,13 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
       email: user.email,
       balance: 0,
       createdAt: serverTimestamp(),
-      referCode: user.uid,      // shareable referral UID
+      referCode: user.uid,      // user can share this UID as referral code
       referralsCount: 0
     };
 
     await setDoc(userRef, baseData);
 
-    // If referral code supplied, update referrer
+    // If there is a referral code, check and apply
     if (refCodeInput && refCodeInput !== user.uid) {
       try {
         const referrerRef = doc(db, "users", refCodeInput);
@@ -96,14 +94,12 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
           await updateDoc(userRef, {
             referredBy: refCodeInput,
             referredAt: serverTimestamp()
-          }).catch(() => {});
+          }).catch(()=>{});
 
           try {
             await updateDoc(referrerRef, { referralsCount: increment(1) });
           } catch (e) {
-            try {
-              await updateDoc(referrerRef, { referralsCount: 1 });
-            } catch (e2) {}
+            try { await updateDoc(referrerRef, { referralsCount: 1 }); } catch(e2){}
           }
         }
       } catch (e) {
@@ -112,9 +108,7 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
     }
 
     showStatus("✅ Signup successful! Redirecting...", "green");
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 1200);
+    setTimeout(() => { window.location.href = "index.html"; }, 1200);
   } catch (error) {
     const code = error.code || "";
     if (code === "auth/email-already-in-use") {
@@ -152,9 +146,7 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
     }
 
     showStatus("✅ Login successful! Redirecting...", "green");
-    setTimeout(() => {
-      window.location.href = "index.html";
-    }, 800);
+    setTimeout(() => { window.location.href = "index.html"; }, 800);
   } catch (error) {
     const code = error.code || "";
     console.error("Login error:", error);
