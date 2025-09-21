@@ -1,6 +1,4 @@
-// script.js (responsive + mobile menu + original game logic)
-// Footer admin email left; mobile shows user email in menu; footer email remains admin constant.
-
+// script.js (responsive + mobile menu + original game logic + referrals)
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
@@ -51,6 +49,15 @@ const headerBalance = document.getElementById("headerBalance");
 const mobileBalance = document.getElementById("mobileBalance");
 const mobileEmail = document.getElementById("mobileEmail");
 
+// Referral DOM elements (new)
+const referBtn = document.getElementById("referBtn");
+const mobileReferBtn = document.getElementById("mobileReferBtn");
+const referPopup = document.getElementById("referPopup");
+const referClose = document.getElementById("referClose");
+const referUserIDEl = document.getElementById("referUserID");
+const referralsCountEl = document.getElementById("referralsCount");
+const copyReferralBtn = document.getElementById("copyReferralBtn");
+
 // Footer admin email (constant)
 const footerEmail = document.getElementById("footerEmail");
 const ADMIN_EMAIL = "adilhayat113@gmail.com";
@@ -75,19 +82,15 @@ for (let i = 0; i < SECTOR_COUNT; i++) {
 
 /* ==========================
    Spin sound setup
-   ==========================
-   - Place `wheel.mp3` in the same folder as this script (or change path below)
-   - We create a single global Audio instance to avoid duplicates
-*/
+   ========================== */
 if (!window.__spinSound) {
   try {
-    const a = new Audio('./wheel.mp3'); // <-- ensure wheel.mp3 exists at this path
+    const a = new Audio('./wheel.mp3');
     a.preload = 'auto';
-    a.volume = 0.7; // adjust default volume (0.0 - 1.0)
-    a.loop = false; // we'll enable loop at play-time
+    a.volume = 0.7;
+    a.loop = false;
     window.__spinSound = a;
   } catch (e) {
-    // ignore - audio unavailable
     window.__spinSound = null;
   }
 }
@@ -193,12 +196,13 @@ async function saveBalance() {
   }
 }
 function updateUserInfoDisplay() {
-  // header balance only, mobile balance, mobile email show user email, footer stays admin email
   if (headerBalance) headerBalance.textContent = `Rs: ${balance}`;
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
   if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : '...';
   if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
-  if (footerEmail) footerEmail.textContent = ADMIN_EMAIL; // admin email fixed in footer
+  if (footerEmail) footerEmail.textContent = ADMIN_EMAIL;
+  // Also update refer popup UI if present
+  if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
 }
 
 // ===== Wheel animation & result handling (with sound) =====
@@ -216,19 +220,16 @@ async function spinWheel(cost = 10) {
     const rounds = 5 + Math.floor(Math.random() * 3);
     const randomExtra = Math.random() * 360;
     const spinAngle = rounds * 360 + randomExtra;
-    const spinTimeTotal = 5000; // ms (as in your provided file)
+    const spinTimeTotal = 5000; // ms
     const startTime = performance.now();
 
-    // Start sound (loop while spinning)
     if (spinSound) {
       try {
         spinSound.loop = true;
         spinSound.currentTime = 0;
         const p = spinSound.play();
         if (p && typeof p.catch === 'function') p.catch(()=>{/* ignore */});
-      } catch (e) {
-        // ignore audio play errors
-      }
+      } catch (e) {}
     }
 
     function step(now) {
@@ -243,7 +244,6 @@ async function spinWheel(cost = 10) {
         requestAnimationFrame(step); return;
       }
 
-      // stop sound when animation ends
       if (spinSound) {
         try {
           spinSound.pause();
@@ -457,16 +457,22 @@ onAuthStateChanged(auth, async (user) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
-      await setDoc(userRef, { email: user.email, balance: 0 });
+      await setDoc(userRef, { email: user.email, balance: 0, referralsCount: 0 });
       balance = 0;
     } else {
       balance = snap.data().balance || 0;
     }
     updateUserInfoDisplay();
+    // Keep live sync for user doc (balance + referralsCount)
     onSnapshot(userRef, (docSnap) => {
       if (docSnap.exists()) {
-        balance = docSnap.data().balance || 0;
+        const data = docSnap.data();
+        balance = data.balance || 0;
         updateUserInfoDisplay();
+        // update referralsCount (if element present)
+        const refs = data.referralsCount || 0;
+        if (referralsCountEl) referralsCountEl.textContent = refs;
+        if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
       }
     });
   } else {
@@ -476,8 +482,96 @@ onAuthStateChanged(auth, async (user) => {
     if (mobileEmail) mobileEmail.textContent = '...';
     if (userIDSpan) userIDSpan.textContent = '...';
     if (footerEmail) footerEmail.textContent = ADMIN_EMAIL;
+    if (referralsCountEl) referralsCountEl.textContent = '0';
+    if (referUserIDEl) referUserIDEl.textContent = '...';
   }
 });
+
+// ===== Refer popup logic =====
+function ensureReferPopupListeners() {
+  // if refer popup doesn't exist in DOM, do nothing
+  if (!referBtn && !mobileReferBtn) return;
+
+  const openRefer = async () => {
+    if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
+
+    // set UID display
+    if (referUserIDEl) referUserIDEl.textContent = currentUser.uid;
+
+    // fetch referralsCount (one-time) — onSnapshot already updates live, but fetch once to be sure
+    try {
+      const udoc = await getDoc(doc(db, "users", currentUser.uid));
+      const data = udoc.exists() ? udoc.data() : {};
+      const refs = data.referralsCount || 0;
+      if (referralsCountEl) referralsCountEl.textContent = refs;
+    } catch (err) {
+      console.error("Failed to fetch referralsCount:", err);
+      if (referralsCountEl) referralsCountEl.textContent = '0';
+    }
+
+    // show modal
+    if (referPopup) {
+      referPopup.style.display = "flex";
+      referPopup.setAttribute("aria-hidden", "false");
+    }
+  };
+
+  // attach handlers
+  if (referBtn) referBtn.addEventListener("click", openRefer);
+  if (mobileReferBtn) mobileReferBtn.addEventListener("click", () => { openRefer(); toggleMobileMenu(); });
+
+  // close handlers
+  if (referClose) referClose.addEventListener("click", () => {
+    if (referPopup) { referPopup.style.display = "none"; referPopup.setAttribute("aria-hidden", "true"); }
+  });
+
+  // close when clicking outside modal
+  window.addEventListener("click", (e) => {
+    if (referPopup && e.target === referPopup) {
+      referPopup.style.display = "none";
+      referPopup.setAttribute("aria-hidden", "true");
+    }
+  });
+
+  // Escape key to close
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (referPopup) { referPopup.style.display = "none"; referPopup.setAttribute("aria-hidden", "true"); }
+    }
+  });
+
+  // copy referral link
+  if (copyReferralBtn) {
+    copyReferralBtn.addEventListener("click", async () => {
+      if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
+      const base = "https://adil-hayyat.github.io/Skull-Spin/auth.html";
+      const referralLink = `${base}?ref=${encodeURIComponent(currentUser.uid)}`;
+
+      // try navigator.clipboard
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(referralLink);
+        } else {
+          // fallback
+          const ta = document.createElement("textarea");
+          ta.value = referralLink;
+          ta.style.position = "fixed";
+          ta.style.left = "-9999px";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        showStatus("✅ Referral link copied to clipboard!", "success");
+        // also open the auth page in a new tab (so user can share / preview)
+        try { window.open(referralLink, "_blank"); } catch (err) { /* ignore */ }
+      } catch (err) {
+        console.error("Copy failed:", err);
+        showStatus("❌ Failed to copy link. Try manually: " + referralLink, "error");
+      }
+    });
+  }
+}
 
 // ===== UI helpers =====
 function showPrize(text){ if(prizeText) prizeText.textContent = text; if(popup) { popup.style.display = 'flex'; popup.setAttribute('aria-hidden','false'); } }
@@ -520,4 +614,5 @@ canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false
 // ===== init =====
 ensureAddBalancePopupListeners();
 ensureWithdrawModal();
+ensureReferPopupListeners(); // ← new
 resizeCanvasToContainer();
