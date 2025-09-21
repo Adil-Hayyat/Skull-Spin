@@ -2,169 +2,83 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-  <title>One-Wheely | Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>One-Wheely</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header>
-    <div class="header-left">
-      <h2 class="title">One-Wheely</h2>
-      <div id="headerBalance" class="balance-desktop" aria-hidden="true">Rs: 0</div>
-    </div>
-
-    <!-- Desktop right controls -->
-    <div class="header-right" id="headerRight">
-      <span id="userInfo">Loading...</span>
-      <button id="addBalanceBtn" type="button">Add Balance</button>
-      <button id="withdrawBtn" type="button">Withdraw</button>
-      <button id="logoutBtn" type="button">Logout</button>
-    </div>
-
-    <!-- Mobile hamburger -->
-    <button id="hamburgerBtn" class="hamburger" aria-label="Open menu" aria-expanded="false">
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div class="logo">One-Wheely</div>
+    <div id="headerBalance">Rs: 0</div>
+    <button id="hamburgerBtn" class="hamburger">
       <span></span><span></span><span></span>
     </button>
+    <nav id="mobileMenu" class="mobile-menu" aria-hidden="true">
+      <p id="mobileEmail">...</p>
+      <p id="mobileBalance">Rs: 0</p>
+      <button id="mobileAddBalanceBtn" class="btn">Add Balance</button>
+      <button id="mobileWithdrawBtn" class="btn">Withdraw</button>
+      <button id="mobileLogoutBtn" class="btn logout">Logout</button>
+    </nav>
   </header>
 
-  <!-- Mobile slide-down menu (hidden on desktop) -->
-  <nav id="mobileMenu" class="mobile-menu" aria-hidden="true">
-    <div class="mobile-user">
-      <div class="mobile-title-row">
-        <strong class="mobile-title">One-Wheely</strong>
-        <div id="mobileBalance" class="mobile-balance">Rs: 0</div>
-      </div>
-      <div class="mobile-account">
-        <div id="mobileEmail">...</div>
-        <button id="mobileLogoutBtn" class="ghost">Logout</button>
-      </div>
+  <!-- ===== Game Area ===== -->
+  <main>
+    <div id="gameWrapper" class="game-wrapper">
+      <canvas id="wheel"></canvas>
     </div>
-
-    <div class="mobile-actions">
-      <button id="mobileAddBalanceBtn">Add Balance</button>
-      <button id="mobileWithdrawBtn">Withdraw</button>
+    <div class="controls">
+      <button id="spinBtn" class="btn">Spin (10 Rs)</button>
+      <button id="multiSpinBtn" class="btn">5 Spins (50 Rs)</button>
+      <button id="addBalanceBtn" class="btn">Add Balance</button>
+      <button id="withdrawBtn" class="btn">Withdraw</button>
     </div>
-  </nav>
-
-  <main class="container">
-    <section id="gameArea">
-      <div id="gameWrapper">
-        <canvas id="wheel" width="800" height="800" aria-label="Game Wheel"></canvas>
-      </div>
-
-      <div class="button-group">
-        <button id="spinBtn">1-SPIN (Rs: 10)</button>
-        <button id="multiSpinBtn">5-SPIN (Rs:50)</button>
-      </div>
-    </section>
+    <div id="userInfo" class="userinfo">...</div>
   </main>
 
-  <!-- Game Result Popup -->
-  <div id="popup" class="overlay" aria-hidden="true">
-    <div id="popupContent">
-      <p id="prizeText">You won: —</p>
-      <button id="popupOkBtn" type="button">OK</button>
-    </div>
-  </div>
+  <!-- ===== Add Balance Popup ===== -->
+  <div id="paymentInstructions" class="modal" aria-hidden="true">
+    <div class="modal-box">
+      <h3 style="margin:0 0 12px 0; color:#143ad3;">Add Balance</h3>
 
-  <!-- Add Balance Modal (responsive) -->
-  <div id="paymentInstructions" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="paymentTitle">
-    <div id="paymentBox" class="modal-box">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h3 id="paymentTitle" style="margin:0;">💳 Payment Instructions</h3>
-        <!-- close X (also handled by paymentCancel in script if needed) -->
-        <button id="paymentClose" class="ghost" aria-label="Close payment dialog" style="background:transparent; border:none; color:#000; font-size:18px;">✕</button>
+      <div style="margin-bottom:10px;">
+        <label style="font-weight:600;">User ID</label>
+        <div id="userID" style="font-size:14px; background:#f5f5f5; padding:6px; border-radius:6px; margin-top:6px;">...</div>
       </div>
 
-      <div style="margin-top:10px; text-align:left;">
-        <label for="inputAccHolder" style="font-weight:600;">Acc. Holder Name:</label>
-        <input id="inputAccHolder" type="text" placeholder="Enter your name" />
-
-        <label for="inputAccNumber" style="font-weight:600;">Acc. Number:</label>
-        <input id="inputAccNumber" type="text" placeholder="Enter your number" />
-
-        <label for="inputAmount" style="font-weight:600;">Amount (min 200 PKR):</label>
-        <input id="inputAmount" type="number" placeholder="200" min="200" />
+      <div style="margin-bottom:10px;">
+        <label style="font-weight:600;">Account Holder Name</label>
+        <input id="inputAccHolder" type="text" placeholder="Full name" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
       </div>
 
-      <hr style="margin:12px 0; border:0; border-top:1px solid #eee;" />
-
-      <div id="paymentDetails" style="text-align:left; font-size:0.95rem;">
-        <p><strong>User UID:</strong> <span id="userID">...</span></p>
-        <p style="color:red; font-weight:bold; margin-top:6px; font-size:0.9rem;">
-          Note: Enter the User UID in the payment message when transferring.
-        </p>
-        <p><strong>Payment Details:</strong></p>
-        <p>Easypaisa — Acc. Holder: <strong>Adil Hayyat</strong> — <strong>03127196480</strong></p>
+      <div style="margin-bottom:10px;">
+        <label style="font-weight:600;">Easypaisa Account Number</label>
+        <input id="inputAccNumber" type="text" placeholder="03XXXXXXXXX" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
       </div>
 
-      <div class="modal-actions" style="margin-top:12px;">
-        <button id="paymentCancel" class="ghost">Cancel</button>
-        <button id="doneBtn" class="primary">Done</button>
+      <div style="margin-bottom:10px;">
+        <label style="font-weight:600;">Amount (min 200 PKR)</label>
+        <input id="inputAmount" type="number" min="200" placeholder="200" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
+      </div>
+
+      <div id="paymentError" style="color:#721c24; display:none; margin-bottom:8px;"></div>
+
+      <div style="display:flex; gap:8px; justify-content:flex-end;">
+        <button id="paymentCancel" class="btn cancel">Cancel</button>
+        <button id="doneBtn" class="btn primary">Done</button>
       </div>
     </div>
   </div>
 
-  <!-- Status message -->
-  <div id="statusMessage" role="status" aria-live="polite"></div>
+  <!-- ===== Prize Popup ===== -->
+  <div id="popup" class="modal" aria-hidden="true">
+    <div class="modal-box">
+      <p id="prizeText">🎁 You got ...</p>
+      <button id="popupOkBtn" class="btn primary">OK</button>
+    </div>
+  </div>
 
-  <!-- Firebase & App scripts -->
-  <script type="module" src="firebase-config.js"></script>
-  <script type="module" src="auth.js"></script>
-  <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
-
-  <!-- Small helpers: toggle mobile menu and ensure modal close by X or outside click -->
-  <script>
-    // Mobile menu toggle (in case script.js not loaded yet)
-    (function(){
-      const hamburger = document.getElementById('hamburgerBtn');
-      const mobileMenu = document.getElementById('mobileMenu');
-      if(!hamburger || !mobileMenu) return;
-      hamburger.addEventListener('click', () => {
-        const open = mobileMenu.style.display === 'block';
-        if(open) {
-          mobileMenu.style.display = 'none';
-          mobileMenu.setAttribute('aria-hidden','true');
-          hamburger.setAttribute('aria-expanded','false');
-        } else {
-          mobileMenu.style.display = 'block';
-          mobileMenu.setAttribute('aria-hidden','false');
-          hamburger.setAttribute('aria-expanded','true');
-        }
-      });
-    })();
-
-    // Payment modal: close X and click outside to close (script.js also handles open/close)
-    (function(){
-      const modal = document.getElementById('paymentInstructions');
-      const closeBtn = document.getElementById('paymentClose');
-      const cancelBtn = document.getElementById('paymentCancel');
-
-      if(closeBtn) closeBtn.addEventListener('click', () => {
-        if(modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
-      });
-      if(cancelBtn) cancelBtn.addEventListener('click', () => {
-        if(modal) { modal.style.display = 'none'; modal.setAttribute('aria-hidden','true'); }
-      });
-
-      // click outside to close
-      window.addEventListener('click', (e) => {
-        if(!modal) return;
-        if(e.target === modal) {
-          modal.style.display = 'none';
-          modal.setAttribute('aria-hidden','true');
-        }
-      });
-
-      // Esc to close
-      window.addEventListener('keydown', (e) => {
-        if(e.key === 'Escape' && modal && modal.style.display === 'flex') {
-          modal.style.display = 'none';
-          modal.setAttribute('aria-hidden','true');
-        }
-      });
-    })();
-  </script>
 </body>
 </html>
