@@ -1,7 +1,4 @@
-// auth.js (final with referral support)
-// Signup, Login, Logout, Auth check
-// - If signup form has input#refCode and a valid user UID is supplied, that referrer gets referralsCount++
-// - New user's document will include referCode: <uid> so user can share their UID as referral code
+// auth.js (final with referral code reward system)
 
 import { auth, db } from "./firebase-config.js";
 import {
@@ -15,9 +12,12 @@ import {
   doc,
   setDoc,
   getDoc,
-  serverTimestamp,
   updateDoc,
-  increment
+  serverTimestamp,
+  collection,
+  query,
+  where,
+  getDocs
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
 /** Show status messages */
@@ -26,18 +26,10 @@ function showStatus(msg, color = "red") {
   if (!statusBox) {
     statusBox = document.createElement("p");
     statusBox.id = "authStatus";
-    statusBox.style.position = "fixed";
-    statusBox.style.top = "12px";
-    statusBox.style.right = "12px";
-    statusBox.style.zIndex = "9999";
-    statusBox.style.padding = "8px 12px";
-    statusBox.style.borderRadius = "8px";
-    statusBox.style.background = "rgba(0,0,0,0.6)";
-    statusBox.style.color = "#fff";
     document.body.appendChild(statusBox);
   }
   statusBox.textContent = msg;
-  statusBox.style.background = color === "green" ? "rgba(40,167,69,0.9)" : "rgba(220,53,69,0.95)";
+  statusBox.style.color = color;
   statusBox.style.display = "block";
   clearTimeout(showStatus._hideTimer);
   showStatus._hideTimer = setTimeout(() => {
@@ -45,11 +37,19 @@ function showStatus(msg, color = "red") {
   }, 5000);
 }
 
+/** Generate random referral code */
+function generateReferralCode(length = 6) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let code = "";
+  for (let i = 0; i < length; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
+}
+
 /** ---------------- SIGNUP ---------------- */
 document.getElementById("signupBtn")?.addEventListener("click", async () => {
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
   const password = (document.getElementById("password")?.value || "");
-  const refCodeInput = (document.getElementById("refCode")?.value || "").trim(); // optional referral code (expected to be a UID)
+  const referralInput = (document.getElementById("referralCode")?.value || "").trim().toUpperCase();
 
   if (!email || !password) {
     showStatus("⚠️ Please enter email and password.", "red");
@@ -61,47 +61,38 @@ document.getElementById("signupBtn")?.addEventListener("click", async () => {
   }
 
   try {
-    // create firebase auth account
+    // ✅ create firebase auth account
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // prepare user doc with referCode = uid so users can share their uid as code
+    // ✅ generate unique referral code for this user
+    const myReferralCode = generateReferralCode(6);
+
+    // ✅ save user profile in Firestore
     const userRef = doc(db, "users", user.uid);
-    const baseData = {
+    await setDoc(userRef, {
       email: user.email,
       balance: 0,
-      createdAt: serverTimestamp(),
-      referCode: user.uid,      // user can share this UID as referral code
-      referralsCount: 0
-    };
+      referralCode: myReferralCode,
+      referredBy: referralInput || null,
+      createdAt: serverTimestamp()
+    });
 
-    await setDoc(userRef, baseData);
-
-    // If there is a referral code, check and apply
-    if (refCodeInput) {
-      try {
-        // only proceed if refCodeInput is different from the new user's uid
-        if (refCodeInput !== user.uid) {
-          const referrerRef = doc(db, "users", refCodeInput);
-          const refSnap = await getDoc(referrerRef);
-          if (refSnap.exists()) {
-            // set referredBy on new user's doc
-            await updateDoc(userRef, {
-              referredBy: refCodeInput,
-              referredAt: serverTimestamp()
-            }).catch(()=>{ /* ignore */ });
-
-            // increment referrer's referralsCount atomically
-            try {
-              await updateDoc(referrerRef, { referralsCount: increment(1) });
-            } catch (e) {
-              // if referrer doc missing referralsCount field, try to set
-              try { await updateDoc(referrerRef, { referralsCount: 1 }); } catch(e2){ /* ignore */ }
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Referral handling error (signup):", e);
+    // ✅ If referral code exists, validate & reward
+    if (referralInput) {
+      const q = query(collection(db, "users"), where("referralCode", "==", referralInput));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        snap.forEach(async docSnap => {
+          const refUser = docSnap.data();
+          const refUserRef = doc(db, "users", docSnap.id);
+          const bonus = 50; // PKR reward for referral
+          const currentBalance = refUser.balance || 0;
+          await updateDoc(refUserRef, { balance: currentBalance + bonus });
+        });
+        showStatus(`✅ Referral applied! Both you and referrer get 50 PKR.`, "green");
+      } else {
+        showStatus("⚠️ Invalid referral code.", "orange");
       }
     }
 
@@ -131,9 +122,11 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
   }
 
   try {
+    // ✅ sign in firebase auth
     const credential = await signInWithEmailAndPassword(auth, email, password);
     const user = credential.user;
 
+    // ✅ check firestore profile exists
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
 
@@ -163,11 +156,7 @@ document.getElementById("loginBtn")?.addEventListener("click", async () => {
 
 /** ---------------- LOGOUT ---------------- */
 export async function logout() {
-  try {
-    await signOut(auth);
-  } catch (e) {
-    console.error("Logout failed:", e);
-  }
+  try { await signOut(auth); } catch (e) { console.error("Logout failed:", e); }
   window.location.href = "auth.html";
 }
 
