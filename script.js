@@ -540,19 +540,21 @@ function ensureReferPopupListeners() {
     }
   });
 
-  // copy referral link
+  // copy referral link (COPY ONLY — no opening)
   if (copyReferralBtn) {
     copyReferralBtn.addEventListener("click", async () => {
       if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
       const base = "https://adil-hayyat.github.io/Skull-Spin/auth.html";
       const referralLink = `${base}?ref=${encodeURIComponent(currentUser.uid)}`;
 
-      // try navigator.clipboard
+      // disable button while copying
+      const origText = copyReferralBtn.textContent;
+      copyReferralBtn.disabled = true;
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(referralLink);
         } else {
-          // fallback
+          // fallback for older browsers
           const ta = document.createElement("textarea");
           ta.value = referralLink;
           ta.style.position = "fixed";
@@ -562,12 +564,19 @@ function ensureReferPopupListeners() {
           document.execCommand("copy");
           document.body.removeChild(ta);
         }
+        // user feedback
+        copyReferralBtn.textContent = "Copied!";
         showStatus("✅ Referral link copied to clipboard!", "success");
-        // also open the auth page in a new tab (so user can share / preview)
-        try { window.open(referralLink, "_blank"); } catch (err) { /* ignore */ }
       } catch (err) {
         console.error("Copy failed:", err);
-        showStatus("❌ Failed to copy link. Try manually: " + referralLink, "error");
+        showStatus("❌ Failed to copy link. Please copy manually: " + referralLink, "error");
+        // if copy failed, select the link in a prompt as last resort
+        try { window.prompt("Copy this link (Ctrl/Cmd+C):", referralLink); } catch(e){}
+      } finally {
+        // restore button after short delay
+        setTimeout(() => {
+          try { copyReferralBtn.textContent = origText; copyReferralBtn.disabled = false; } catch(e){}
+        }, 1500);
       }
     });
   }
