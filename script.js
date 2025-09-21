@@ -1,5 +1,5 @@
 // script.js (responsive + mobile menu + original game logic)
-// Update: mobile menu shows logged-in user's email; footer keeps admin email constant.
+// Footer admin email left; mobile shows user email in menu; footer email remains admin constant.
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";

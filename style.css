@@ -187,7 +187,8 @@ canvas {
   justify-content:space-between;
   gap:12px;
 }
-.footer-left { display:flex; align-items:center; gap:10px; }
+.footer-left { display:flex; align-items:center; gap:10px; order: 1; }
+.footer-right { order: 2; }
 .footer-admin { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:6px; background: transparent; text-decoration:none; color:inherit; }
 .footer-email { font-weight:700; font-size:0.95rem; color:#fff; }
 
