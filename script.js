@@ -196,7 +196,7 @@ async function spinWheel(cost = 10) {
     const rounds = 5 + Math.floor(Math.random() * 3);
     const randomExtra = Math.random() * 360;
     const spinAngle = rounds * 360 + randomExtra;
-    const spinTimeTotal = 2200;
+    const spinTimeTotal = 5000;
     const startTime = performance.now();
 
     function step(now) {
