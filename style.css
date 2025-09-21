@@ -1,182 +1,187 @@
-/* ============================= */
-/* Global Styles                 */
-/* ============================= */
+/* ========== Global & Colors (keep original theme) ========== */
+:root{
+  --bg: #143ad3;
+  --header: #0c255c;
+  --btn: #884dff;
+  --btn-hover: #0c255c;
+  --accent: #e14a3c;
+  --white: #ffffff;
+  --popup-blue: rgb(4, 92, 232);
+}
+*{box-sizing:border-box}
 body {
   margin: 0;
-  background: #143ad3;
+  background: var(--bg);
   font-family: Arial, sans-serif;
-  text-align: center;
-  color: white;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  color: var(--white);
+  -webkit-font-smoothing:antialiased;
 }
 
-/* ============================= */
-/* Header                        */
-/* ============================= */
+/* ========== Header ========== */
 header {
-  background: #0c255c;
-  padding: 15px;
+  background: var(--header);
+  padding: 12px 16px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap; /* so buttons wrap on small screens */
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 60;
 }
-header h2 {
-  margin: 0;
-  font-size: 1.6rem;
+.header-left { display:flex; align-items:center; gap:12px; }
+.title { margin:0; font-size:1.4rem; }
+.balance-desktop {
+  background: rgba(255,255,255,0.06);
+  padding:6px 10px;
+  border-radius:8px;
+  font-weight:700;
+  font-size:0.95rem;
+  color: #fff;
 }
 
-/* ============================= */
-/* Buttons                       */
-/* ============================= */
+/* Header right (desktop) */
+.header-right {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+/* ========== Buttons ========== */
 button {
-  margin-left: 10px;
   padding: 8px 15px;
   border: none;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
-  background: #884dff;
-  color: white;
-  transition: background 0.3s;
-  font-size: 1rem;
+  background: var(--btn);
+  color: var(--white);
+  transition: background .18s, transform .06s;
 }
-button:hover {
-  background: #0c255c;
+button:hover { background: var(--btn-hover); transform: translateY(-1px); }
+button.ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+}
+button.primary { background: var(--accent); color: #fff; }
+
+/* ========== Hamburger (mobile) ========== */
+.hamburger {
+  display: none;
+  width:44px;
+  height:44px;
+  background: transparent;
+  border: none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:4px;
+  padding:8px;
+  cursor:pointer;
+}
+.hamburger span {
+  display:block;
+  height:3px;
+  border-radius:3px;
+  background:#fff;
+  width:22px;
+  transition: transform .18s, opacity .18s;
 }
 
-/* ============================= */
-/* Game Wrapper & Canvas          */
-/* ============================= */
+/* ========== Mobile Menu (slide-down) ========== */
+.mobile-menu {
+  display: none;
+  background: rgba(0,0,0,0.06);
+  color: #fff;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.mobile-title-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.mobile-title { font-weight:800; }
+.mobile-balance {
+  background: rgba(255,255,255,0.06);
+  padding:6px 10px;
+  border-radius:8px;
+  font-weight:700;
+}
+.mobile-account {
+  margin-top:10px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.mobile-actions {
+  display:flex;
+  gap:10px;
+  margin-top:12px;
+  flex-direction:column;
+}
+
+/* ========== Layout & Game ========== */
+.container {
+  width: calc(100% - 24px);
+  max-width: 980px;
+  margin: 18px auto;
+  padding: 0;
+}
 #gameWrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
+  display: grid;
+  place-items: center;
   width: 100%;
-}
-
-canvas {
-  border-radius: 50%;
-  display: block;
+  max-width: 700px;
   margin: 0 auto;
-  max-width: 90vw;   /* responsive width */
-  max-height: 70vh;  /* responsive height */
+  padding: 12px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), transparent);
+  border-radius: 12px;
+}
+canvas {
   width: 500px;
   height: 500px;
-  background: transparent;
-  touch-action: none; /* prevent scroll during game */
+  max-width: 90vw;
+  max-height: 70vh;
+  border-radius: 50%;
+  display:block;
+  touch-action: none;
 }
 
-/* ============================= */
-/* Button Group                  */
-/* ============================= */
+/* Button group */
 .button-group {
-  display: flex;
-  gap: 15px;
-  margin-top: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
+  display:flex;
+  gap:15px;
+  margin-top:18px;
+  justify-content:center;
+  flex-wrap:wrap;
 }
-#spinBtn,
-#multiSpinBtn {
-  padding: 12px 25px;
-  font-size: 18px;
-  border-radius: 10px;
-  min-width: 180px;
+#spinBtn, #multiSpinBtn {
+  padding:12px 25px;
+  font-size:18px;
+  border-radius:10px;
+  min-width:180px;
 }
 
-/* ============================= */
-/* Popup (Game Result)           */
-/* ============================= */
-#popup {
-  display: none;
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: rgba(0,0,0,0.6);
-  justify-content: center;
-  align-items: center;
-  padding: 10px;
-}
+/* ========== Popup & Modals ========== */
+.overlay { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.6); align-items:center; justify-content:center; z-index:1000; padding:12px; }
 #popupContent {
-  background: rgb(4, 92, 232);
-  padding: 20px;
-  border-radius: 10px;
-  font-size: 20px;
-  font-weight: bold;
-  text-align: center;
-  max-width: 90%;
+  background: var(--popup-blue);
+  padding:20px;
+  border-radius:10px;
+  text-align:center;
+  font-weight:bold;
 }
-#popup button {
-  margin-top: 15px;
-  padding: 10px 18px;
-  border: none;
-  background: #23015c;
-  color: white;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 1rem;
+.modal { display:none; position:fixed; inset:0; align-items:center; justify-content:center; z-index:1100; padding:14px; }
+.modal-box {
+  background:#fff; color:#000; border-radius:12px; padding:16px; width:100%; max-width:420px; box-shadow:0 8px 28px rgba(0,0,0,0.2);
 }
+.modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
 
-/* ============================= */
-/* Payment Instructions Popup    */
-/* ============================= */
-#paymentInstructions {
-  display: none;
-  position: fixed;
-  top: 50%; 
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #ffffff;
-  color: #000000;
-  border: 1px solid #ccc;
-  border-radius: 12px;
-  padding: 20px;
-  max-width: 350px;
-  width: 90%;
-  z-index: 1000;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.3);
-  text-align: center;
-}
-#paymentInstructions h3 {
-  margin-top: 0;
-  color: #143ad3;
-  font-size: 20px;
-  text-align: center;
-}
-#paymentInstructions p {
-  margin: 8px 0;
-  font-size: 15px;
-  line-height: 1.4em;
-}
-#paymentInstructions hr {
-  margin: 15px 0;
-  border: 0;
-  border-top: 1px solid #ccc;
-}
-#closePaymentPopup {
-  display: block;
-  margin: 0 auto;
-  margin-top: 15px;
-  padding: 10px 20px;
-  background: #e14a3c;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background 0.3s;
-  font-size: 1rem;
-}
-#closePaymentPopup:hover {
-  background: #b52f25;
-}
-
-/* ============================= */
-/* Status Message Box            */
-/* ============================= */
+/* Status box */
 #statusMessage {
   position: fixed;
   bottom: 20px;
@@ -187,72 +192,22 @@ canvas {
   font-weight: bold;
   z-index: 2000;
   display: none;
-  font-size: 0.95rem;
 }
 
-/* ============================= */
-/* Media Queries (Responsive)    */
-/* ============================= */
-@media (max-width: 768px) {
-  header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  button {
-    margin-left: 0;
-    margin-top: 8px;
-    width: 100%;
-    max-width: 300px;
-  }
-
-  .button-group {
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-  }
-
-  #spinBtn,
-  #multiSpinBtn {
-    font-size: 16px;
-    min-width: unset;
-    width: 80%;
-  }
-
-  #popupContent {
-    font-size: 18px;
-    padding: 15px;
-  }
+/* ========== Responsive ========== */
+@media (max-width: 900px) {
+  .header-right { display: none; }      /* hide desktop actions */
+  .hamburger { display: flex; }         /* show hamburger */
+  .balance-desktop { display: none; }
+  .mobile-menu { display: none; }       /* default hidden, toggled via JS */
 }
 
-@media (max-width: 480px) {
-  header h2 {
-    font-size: 1.3rem;
-  }
-
-  canvas {
-    max-width: 95vw;
-    max-height: 60vh;
-  }
-
-  button {
-    font-size: 0.9rem;
-    padding: 10px 14px;
-  }
-
-  #spinBtn,
-  #multiSpinBtn {
-    font-size: 15px;
-    width: 90%;
-  }
-
-  #popupContent {
-    font-size: 16px;
-  }
-
-  #paymentInstructions {
-    padding: 15px;
-    font-size: 14px;
-  }
+@media (max-width: 540px) {
+  header { padding:10px 12px; }
+  .title { font-size: 1.15rem; }
+  #spinBtn, #multiSpinBtn { width: 90%; min-width: unset; font-size:16px; }
+  canvas { max-height: 60vh; }
 }
+
+/* small touches */
+.hidden { display:none !important; }
