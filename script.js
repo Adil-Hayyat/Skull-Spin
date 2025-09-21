@@ -58,9 +58,8 @@ const referUserIDEl = document.getElementById("referUserID");
 const referralsCountEl = document.getElementById("referralsCount");
 const copyReferralBtn = document.getElementById("copyReferralBtn");
 
-// Footer admin email (constant)
+// Footer email element (will show current user's email)
 const footerEmail = document.getElementById("footerEmail");
-const ADMIN_EMAIL = "adilhayat113@gmail.com";
 
 let balance = 0;
 let currentUser = null;
@@ -200,7 +199,8 @@ function updateUserInfoDisplay() {
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
   if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : '...';
   if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
-  if (footerEmail) footerEmail.textContent = ADMIN_EMAIL;
+  // Footer: show current user's email (or '...' if not logged in)
+  if (footerEmail) footerEmail.textContent = currentUser ? currentUser.email : '...';
   // Also update refer popup UI if present
   if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
 }
@@ -481,7 +481,7 @@ onAuthStateChanged(auth, async (user) => {
     if (mobileBalance) mobileBalance.textContent = `Rs: 0`;
     if (mobileEmail) mobileEmail.textContent = '...';
     if (userIDSpan) userIDSpan.textContent = '...';
-    if (footerEmail) footerEmail.textContent = ADMIN_EMAIL;
+    if (footerEmail) footerEmail.textContent = '...'; // show '...' when not logged in
     if (referralsCountEl) referralsCountEl.textContent = '0';
     if (referUserIDEl) referUserIDEl.textContent = '...';
   }
@@ -570,7 +570,6 @@ function ensureReferPopupListeners() {
       } catch (err) {
         console.error("Copy failed:", err);
         showStatus("❌ Failed to copy link. Please copy manually: " + referralLink, "error");
-        // if copy failed, select the link in a prompt as last resort
         try { window.prompt("Copy this link (Ctrl/Cmd+C):", referralLink); } catch(e){}
       } finally {
         // restore button after short delay
@@ -623,5 +622,5 @@ canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false
 // ===== init =====
 ensureAddBalancePopupListeners();
 ensureWithdrawModal();
-ensureReferPopupListeners(); // ← new
+ensureReferPopupListeners();
 resizeCanvasToContainer();
