@@ -1,7 +1,5 @@
 // script.js (responsive + mobile menu + original game logic)
-// - Canvas DPR resizing & draw logic
-// - Spin/multispin, payments & withdraw logic preserved
-// - Mobile hamburger toggles mobileMenu; mobile buttons mapped to same handlers
+// Modified: email no longer shown in header/mobile menu; moved to footer (footerEmail)
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -20,14 +18,13 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
 
-// DOM
+// DOM refs
 const canvas = document.getElementById("wheel");
 const ctx = canvas.getContext("2d");
 const gameWrapper = document.getElementById("gameWrapper") || canvas.parentElement;
 
 const spinBtn = document.getElementById("spinBtn");
 const multiSpinBtn = document.getElementById("multiSpinBtn");
-const userInfo = document.getElementById("userInfo");
 const withdrawBtn = document.getElementById("withdrawBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -50,9 +47,11 @@ const mobileMenu = document.getElementById("mobileMenu");
 const mobileAddBalanceBtn = document.getElementById("mobileAddBalanceBtn");
 const mobileWithdrawBtn = document.getElementById("mobileWithdrawBtn");
 const mobileLogoutBtn = document.getElementById("mobileLogoutBtn");
-const mobileEmail = document.getElementById("mobileEmail");
-const mobileBalance = document.getElementById("mobileBalance");
 const headerBalance = document.getElementById("headerBalance");
+const mobileBalance = document.getElementById("mobileBalance");
+
+// Footer email element
+const footerEmail = document.getElementById("footerEmail");
 
 let balance = 0;
 let currentUser = null;
@@ -75,13 +74,9 @@ for (let i = 0; i < SECTOR_COUNT; i++) {
 // ===== responsive canvas helpers =====
 function resizeCanvasToContainer() {
   const rect = gameWrapper ? gameWrapper.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
-  const cssSide = Math.max(80, Math.floor(Math.min(rect.width, rect.height))); // make square-ish by min
-  const cssW = Math.min(rect.width, 700); // limit max width for desktop
-  const cssH = cssSide;
-
+  const cssSide = Math.max(80, Math.floor(Math.min(rect.width, rect.height)));
+  const cssW = Math.min(rect.width, 700);
   const dpr = Math.max(1, window.devicePixelRatio || 1);
-
-  // choose CSS width as min of available width and 700; keep square for wheel by using cssSide when small
   const finalCssWidth = window.innerWidth < 700 ? Math.min(window.innerWidth - 24, 600) : Math.min(500, cssW);
 
   canvas.style.width = finalCssWidth + "px";
@@ -126,7 +121,6 @@ function drawWheel(rotationRad = 0) {
   if (wheelImg.complete && wheelImg.naturalWidth) {
     ctx.drawImage(wheelImg, -cssW / 2, -cssH / 2, cssW, cssH);
   } else {
-    // fallback simple wheel
     const radius = Math.min(cssW, cssH) / 2;
     for (let i = 0; i < SECTOR_COUNT; i++) {
       ctx.beginPath();
@@ -177,13 +171,11 @@ async function saveBalance() {
   }
 }
 function updateUserInfoDisplay() {
-  if (userInfo && currentUser) {
-    userInfo.textContent = `${currentUser.email} | Rs: ${balance}`;
-  }
-  if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : "...";
+  // Only show balance in header & mobile balance; show email in footer
   if (headerBalance) headerBalance.textContent = `Rs: ${balance}`;
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
-  if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : "...";
+  if (footerEmail) footerEmail.textContent = currentUser ? currentUser.email : '...';
+  if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
 }
 
 // ===== Wheel animation & result handling =====
@@ -279,7 +271,7 @@ function ensureAddBalancePopupListeners() {
   };
 
   addBalanceBtn.addEventListener("click", openPayment);
-  if (mobileAddBalanceBtn) mobileAddBalanceBtn.addEventListener("click", openPayment);
+  if (mobileAddBalanceBtn) mobileAddBalanceBtn.addEventListener("click", () => { openPayment(); toggleMobileMenu(); });
 
   doneBtn.addEventListener("click", async () => {
     const user = currentUser;
@@ -324,14 +316,11 @@ function ensureAddBalancePopupListeners() {
 // ===== Withdraw modal (same as before) =====
 function ensureWithdrawModal() {
   if (document.getElementById("withdrawModal")) return;
-  // create modal overlay...
   const modalOverlay = document.createElement("div");
   modalOverlay.id = "withdrawModal";
   modalOverlay.style.position = "fixed";
-  modalOverlay.style.top = "0";
-  modalOverlay.style.left = "0";
-  modalOverlay.style.width = "100%";
-  modalOverlay.style.height = "100%";
+  modalOverlay.style.top = "0"; modalOverlay.style.left = "0";
+  modalOverlay.style.width = "100%"; modalOverlay.style.height = "100%";
   modalOverlay.style.background = "rgba(0,0,0,0.5)";
   modalOverlay.style.display = "flex";
   modalOverlay.style.alignItems = "center";
@@ -340,13 +329,9 @@ function ensureWithdrawModal() {
   modalOverlay.style.visibility = "hidden";
 
   const box = document.createElement("div");
-  box.style.background = "#fff";
-  box.style.padding = "18px";
-  box.style.borderRadius = "10px";
-  box.style.minWidth = "300px";
-  box.style.boxShadow = "0 6px 20px rgba(0,0,0,0.2)";
-  box.style.textAlign = "left";
-  box.style.color = "#000";
+  box.style.background = "#fff"; box.style.padding = "18px"; box.style.borderRadius = "10px";
+  box.style.minWidth = "300px"; box.style.boxShadow = "0 6px 20px rgba(0,0,0,0.2)";
+  box.style.textAlign = "left"; box.style.color = "#000";
 
   box.innerHTML = `
     <h3 style="margin:0 0 10px 0; color:#143ad3;">Enter Account Details</h3>
@@ -442,10 +427,10 @@ onAuthStateChanged(auth, async (user) => {
     });
   } else {
     currentUser = null;
-    if (userInfo) userInfo.textContent = "...";
-    if (mobileEmail) mobileEmail.textContent = "...";
     if (headerBalance) headerBalance.textContent = `Rs: 0`;
     if (mobileBalance) mobileBalance.textContent = `Rs: 0`;
+    if (footerEmail) footerEmail.textContent = '...';
+    if (userIDSpan) userIDSpan.textContent = '...';
   }
 });
 
@@ -470,18 +455,16 @@ let mobileOpen = false;
 function toggleMobileMenu(){
   mobileOpen = !mobileOpen;
   if(mobileOpen){
-    mobileMenu.style.display = 'block';
-    mobileMenu.setAttribute('aria-hidden','false');
-    hamburgerBtn.classList.add('open');
+    if(mobileMenu) { mobileMenu.style.display = 'block'; mobileMenu.setAttribute('aria-hidden','false'); }
+    hamburgerBtn?.classList.add('open');
   } else {
-    mobileMenu.style.display = 'none';
-    mobileMenu.setAttribute('aria-hidden','true');
-    hamburgerBtn.classList.remove('open');
+    if(mobileMenu) { mobileMenu.style.display = 'none'; mobileMenu.setAttribute('aria-hidden','true'); }
+    hamburgerBtn?.classList.remove('open');
   }
 }
 hamburgerBtn?.addEventListener('click', toggleMobileMenu);
 
-// Map mobile buttons to main handlers (so both mobile & desktop same behavior)
+// Map mobile buttons to main handlers (mobile desktop parity)
 if (mobileAddBalanceBtn) mobileAddBalanceBtn.addEventListener('click', () => { addBalanceBtn?.click(); toggleMobileMenu(); });
 if (mobileWithdrawBtn) mobileWithdrawBtn.addEventListener('click', () => { withdrawBtn?.click(); toggleMobileMenu(); });
 
