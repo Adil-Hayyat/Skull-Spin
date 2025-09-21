@@ -3,8 +3,87 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Skull-Spin</title>
+  <title>Skull-Spin | Auth</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #143ad3;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      background: #0c255c;
+      padding: 16px;
+      text-align: center;
+    }
+    header h2 { margin: 0; }
+
+    .auth-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .auth-box {
+      background: #fff;
+      color: #000;
+      display: flex;
+      border-radius: 10px;
+      overflow: hidden;
+      max-width: 900px;
+      width: 100%;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
+    .auth-column {
+      flex: 1;
+      padding: 30px 25px;
+    }
+    .auth-column h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+      color: #143ad3;
+    }
+    .auth-column input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    .auth-column button {
+      width: 100%;
+      padding: 12px;
+      background: #884dff;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+    }
+    .auth-column button:hover { background: #0c255c; }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .auth-box { flex-direction: column; }
+    }
+
+    /* Status message */
+    #authStatus {
+      display: none;
+      text-align: center;
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+
   <!-- Firebase Auth check (keeps logged-in users away from auth page) -->
   <script type="module">
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -22,19 +101,33 @@
     <h2>Skull-Spin</h2>
   </header>
 
-  <!-- Auth form -->
-  <div style="text-align:center; margin-top:120px;">
+  <!-- Auth container -->
+  <div class="auth-container">
+    <div class="auth-box">
 
-    <input type="email" id="email" placeholder="Email" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
+      <!-- Sign Up Column -->
+      <div class="auth-column" style="background:#f5f7ff;">
+        <h3>Create Account</h3>
+        <input type="text" id="name" placeholder="Full Name">
+        <input type="text" id="username" placeholder="Username">
+        <input type="email" id="signupEmail" placeholder="Email">
+        <input type="password" id="signupPassword" placeholder="Password (6+ characters)">
+        <input type="password" id="confirmPassword" placeholder="Confirm Password">
+        <button id="signupBtn">Sign Up</button>
+      </div>
 
-    <input type="password" id="password" placeholder="Enter 6+ character Password" style="padding:8px; width:320px; margin-top:12px; border-radius:8px; border:1px solid #ccc;"><br><br>
-
-    <button id="signupBtn" style="padding:12px 40px; margin-top:10px; margin-right:8px; border:none; background:#884dff; color:white; border-radius:8px; cursor:pointer;">Sign Up</button>
-    <button id="loginBtn" style="padding:12px 40px; margin-top:10px; border:none; background:#884dff; color:white; border-radius:8px; cursor:pointer;">Log In</button>
+      <!-- Login Column -->
+      <div class="auth-column">
+        <h3>Log In</h3>
+        <input type="email" id="loginEmail" placeholder="Email">
+        <input type="password" id="loginPassword" placeholder="Password">
+        <button id="loginBtn">Log In</button>
+      </div>
+    </div>
   </div>
 
-  <!-- ✅ Status message (success/error) -->
-  <p id="authStatus" style="display:none; font-weight:bold; text-align:center; margin-top:15px;"></p>
+  <!-- ✅ Status message -->
+  <p id="authStatus"></p>
 
   <!-- Firebase configs + auth.js -->
   <script type="module" src="firebase-config.js"></script>
