@@ -15,7 +15,6 @@
 
     <!-- Desktop right controls -->
     <div class="header-right" id="headerRight">
-      <span id="userInfo">Loading...</span>
       <button id="addBalanceBtn" type="button">Add Balance</button>
       <button id="withdrawBtn" type="button">Withdraw</button>
       <button id="logoutBtn" type="button">Logout</button>
@@ -35,7 +34,6 @@
         <div id="mobileBalance" class="mobile-balance">Rs: 0</div>
       </div>
       <div class="mobile-account">
-        <div id="mobileEmail">...</div>
         <button id="mobileLogoutBtn" class="ghost">Logout</button>
       </div>
     </div>
@@ -67,7 +65,7 @@
     </div>
   </div>
 
-  <!-- Add Balance Modal (structured & responsive like Withdraw modal) -->
+  <!-- Add Balance Modal -->
   <div id="paymentInstructions" class="modal" aria-hidden="true" role="dialog" aria-modal="true" style="display:none;">
     <div id="paymentBox" class="modal-box" style="max-height:90vh; overflow-y:auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
@@ -75,7 +73,6 @@
         <button id="paymentClose" class="ghost" aria-label="Close payment dialog" style="background:transparent; border:none; font-size:18px; color:#000;">✕</button>
       </div>
 
-      <!-- Payment form body (clear, stacked like withdraw modal) -->
       <div style="margin-top:12px; text-align:left;">
         <div style="margin-bottom:12px;">
           <label for="inputAccHolder" style="font-weight:600; display:block; margin-bottom:6px;">Acc. Holder Name</label>
@@ -116,15 +113,23 @@
   <!-- Status message -->
   <div id="statusMessage" role="status" aria-live="polite"></div>
 
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-content">
+      <span class="footer-icon">👤</span>
+      <span id="footerEmail">Loading...</span>
+    </div>
+  </footer>
+
   <!-- Firebase & App scripts -->
   <script type="module" src="firebase-config.js"></script>
   <script type="module" src="auth.js"></script>
   <script type="module" src="payments.js"></script>
   <script type="module" src="script.js"></script>
 
-  <!-- Inline helpers (non-conflicting) -->
+  <!-- Inline helpers -->
   <script>
-    // Close modal with X, Cancel, outside click, ESC (these helpers just improve UX)
+    // Close Add Balance modal
     (function(){
       const modal = document.getElementById('paymentInstructions');
       const closeBtn = document.getElementById('paymentClose');
@@ -136,15 +141,7 @@
         modal.style.display = 'none';
         modal.setAttribute('aria-hidden', 'true');
       }
-      function showModal() {
-        modal.style.display = 'flex';
-        modal.setAttribute('aria-hidden', 'false');
-        // scroll top inside modal box
-        const box = document.getElementById('paymentBox');
-        if (box) box.scrollTop = 0;
-      }
 
-      // close handlers
       if (closeBtn) closeBtn.addEventListener('click', hideModal);
       if (cancelBtn) cancelBtn.addEventListener('click', hideModal);
 
@@ -154,16 +151,9 @@
       window.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') hideModal();
       });
-
-      // Expose showModal globally in case script.js wants to call it directly
-      window.__showPaymentModal = showModal;
-      window.__hidePaymentModal = hideModal;
-
-      // If script.js opens modal by setting style.display = 'flex', we don't need to do anything else.
-      // This helper allows you to open the modal from console: __showPaymentModal()
     })();
 
-    // Mobile hamburger quick helper (if script.js not yet loaded)
+    // Mobile hamburger
     (function(){
       const hamburger = document.getElementById('hamburgerBtn');
       const mobileMenu = document.getElementById('mobileMenu');
@@ -182,5 +172,31 @@
       });
     })();
   </script>
+
+  <style>
+    /* Footer style (same as header color) */
+    .app-footer {
+      background: #222; /* same as header background */
+      color: #fff;
+      text-align: center;
+      padding: 10px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+    .footer-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 0.95rem;
+    }
+    .footer-icon {
+      font-size: 1.1rem;
+    }
+    body {
+      padding-bottom: 50px; /* space for footer */
+    }
+  </style>
 </body>
 </html>
