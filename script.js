@@ -1,5 +1,5 @@
 // script.js (responsive + mobile menu + original game logic)
-// Modified: email no longer shown in header/mobile menu; moved to footer (footerEmail)
+// Update: mobile menu shows logged-in user's email; footer keeps admin email constant.
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -49,9 +49,11 @@ const mobileWithdrawBtn = document.getElementById("mobileWithdrawBtn");
 const mobileLogoutBtn = document.getElementById("mobileLogoutBtn");
 const headerBalance = document.getElementById("headerBalance");
 const mobileBalance = document.getElementById("mobileBalance");
+const mobileEmail = document.getElementById("mobileEmail");
 
-// Footer email element
+// Footer admin email (constant)
 const footerEmail = document.getElementById("footerEmail");
+const ADMIN_EMAIL = "adilhayat113@gmail.com";
 
 let balance = 0;
 let currentUser = null;
@@ -171,11 +173,12 @@ async function saveBalance() {
   }
 }
 function updateUserInfoDisplay() {
-  // Only show balance in header & mobile balance; show email in footer
+  // header balance only, mobile balance, mobile email show user email, footer stays admin email
   if (headerBalance) headerBalance.textContent = `Rs: ${balance}`;
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
-  if (footerEmail) footerEmail.textContent = currentUser ? currentUser.email : '...';
+  if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : '...';
   if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
+  if (footerEmail) footerEmail.textContent = ADMIN_EMAIL; // admin email fixed in footer
 }
 
 // ===== Wheel animation & result handling =====
@@ -313,7 +316,7 @@ function ensureAddBalancePopupListeners() {
   });
 }
 
-// ===== Withdraw modal (same as before) =====
+// ===== Withdraw modal (same) =====
 function ensureWithdrawModal() {
   if (document.getElementById("withdrawModal")) return;
   const modalOverlay = document.createElement("div");
@@ -429,8 +432,9 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = null;
     if (headerBalance) headerBalance.textContent = `Rs: 0`;
     if (mobileBalance) mobileBalance.textContent = `Rs: 0`;
-    if (footerEmail) footerEmail.textContent = '...';
+    if (mobileEmail) mobileEmail.textContent = '...';
     if (userIDSpan) userIDSpan.textContent = '...';
+    if (footerEmail) footerEmail.textContent = ADMIN_EMAIL;
   }
 });
 
@@ -464,7 +468,7 @@ function toggleMobileMenu(){
 }
 hamburgerBtn?.addEventListener('click', toggleMobileMenu);
 
-// Map mobile buttons to main handlers (mobile desktop parity)
+// Map mobile buttons to main handlers
 if (mobileAddBalanceBtn) mobileAddBalanceBtn.addEventListener('click', () => { addBalanceBtn?.click(); toggleMobileMenu(); });
 if (mobileWithdrawBtn) mobileWithdrawBtn.addEventListener('click', () => { withdrawBtn?.click(); toggleMobileMenu(); });
 
