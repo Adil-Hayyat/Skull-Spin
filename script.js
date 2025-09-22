@@ -599,12 +599,12 @@ function ensureWithdrawModal() {
   box.innerHTML = `
     <h3 style="margin:0 0 10px 0; color:#143ad3;">Enter Account Details</h3>
     <div style="margin-bottom:10px;">
-      <label style="font-weight:600;">Acc. Holder's Name</label>
-      <input id="withdrawHolderInput" type="text" placeholder="Full name" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
+      <label style="font-weight:600;">Account Holder's Name</label>
+      <input id="withdrawHolderInput" type="text" placeholder="Enter Full Name" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
     </div>
     <div style="margin-bottom:10px;">
-      <label style="font-weight:600;">Easypaisa Acc. Number</label>
-      <input id="withdrawNumberInput" type="text" placeholder="e.g. 03XXXXXXXXX" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
+      <label style="font-weight:600;">Easypaisa Account Number</label>
+      <input id="withdrawNumberInput" type="text" placeholder="03XXXXXXXXX" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
     </div>
     <div style="margin-bottom:10px;">
       <label style="font-weight:600;">Amount (min 1000 PKR)</label>
