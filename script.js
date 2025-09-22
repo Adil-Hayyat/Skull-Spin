@@ -144,7 +144,7 @@ function pickPrizeIndex() {
   }
 
   // bias: probability of skull (0.9999)
-  const skullProb = 0.9999;
+  const skullProb = 1.0;
   if (Math.random() < skullProb) {
     // pick random skull index
     return skullIndexes[Math.floor(Math.random() * skullIndexes.length)];
