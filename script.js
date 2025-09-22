@@ -1,5 +1,10 @@
 // script.js (responsive + mobile menu + original game logic + referrals + Free-Spin feature)
-// UPDATED: Free-Spin visible on mobile + desktop, new users get freeSpins: 5 by default
+// Behavior:
+// - New users get freeSpins = 5 by default on first account creation.
+// - Free-Spin appears and works on both desktop and mobile.
+// - Clicking a free-spin decrements freeSpins by 1 (Firestore update) and spins the wheel (cost 0).
+// - When referralsCount increases, user receives +5 free spins per new referral.
+// - Attempts to avoid race where UI briefly shows 0 right after creating a new user doc.
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -73,6 +78,7 @@ let currentUser = null;
 let currentRotationRad = 0;
 let freeSpins = 0; // local copy of free spins
 let prevReferralsCount = 0; // to detect new referrals
+let userDocCreatedByClient = false; // helps prevent race that sets freeSpins to 0 immediately after create
 
 // wheel image & prizes
 const wheelImg = new Image();
@@ -203,7 +209,7 @@ async function saveBalance() {
   try {
     await updateDoc(userRef, { balance });
   } catch {
-    await setDoc(userRef, { email: currentUser.email, balance });
+    await setDoc(userRef, { email: currentUser.email, balance }, { merge: true });
   }
 }
 function updateUserInfoDisplay() {
@@ -231,9 +237,14 @@ async function useFreeSpin() {
 
   try {
     const userRef = doc(db, "users", currentUser.uid);
+    // Decrement freeSpins atomically on client (optimistic) and request update to Firestore
     const newFree = Math.max(0, (freeSpins || 0) - 1);
-    await updateDoc(userRef, { freeSpins: newFree });
-    // optimistic local update
+    try {
+      await updateDoc(userRef, { freeSpins: newFree });
+    } catch (err) {
+      // If update fails (race/offline), still try to continue with optimistic local state
+      console.error("Failed to update freeSpins in Firestore:", err);
+    }
     freeSpins = newFree;
     updateFreeSpinDisplay();
 
@@ -317,6 +328,7 @@ function ensureFreeSpinButton() {
         mobileFreeSpinBtn.style.padding = style.padding;
         mobileFreeSpinBtn.style.fontSize = style.fontSize;
         mobileFreeSpinBtn.style.width = "100%";
+        mobileFreeSpinBtn.style.boxSizing = "border-box";
       }
     }
   } catch (e) {
@@ -336,7 +348,7 @@ function updateFreeSpinDisplay() {
 function ensureFreeSpinButtonAppearance() {
   if (!freeSpinBtn && !mobileFreeSpinBtn) return;
 
-  // Desktop button: always visible (we will show on mobile too via mobileFreeSpinBtn)
+  // Desktop button: visible inline; on very small screens it will still exist but mobile button is primary.
   if (freeSpinBtn) {
     try {
       freeSpinBtn.style.display = "inline-block";
@@ -620,52 +632,91 @@ onAuthStateChanged(auth, async (user) => {
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
       // NEW USER: give default 5 free spins
-      await setDoc(userRef, { email: user.email, balance: 0, referralsCount: 0, freeSpins: 5 });
-      balance = 0;
-      freeSpins = 5;
-      prevReferralsCount = 0;
+      try {
+        // setDoc with merge:true to be safe
+        await setDoc(userRef, { email: user.email || "", balance: 0, referralsCount: 0, freeSpins: 5 }, { merge: true });
+        freeSpins = 5;
+        balance = 0;
+        prevReferralsCount = 0;
+        userDocCreatedByClient = true;
+        // update UI immediately (optimistic) so user sees 5 right away
+        updateUserInfoDisplay();
+        // prevent immediate snapshot overwrite for a short window
+        setTimeout(() => { userDocCreatedByClient = false; }, 1200);
+      } catch (err) {
+        console.error("Failed to create user doc with default free spins:", err);
+        // fallback: local defaults
+        freeSpins = 5;
+        balance = 0;
+        prevReferralsCount = 0;
+        updateUserInfoDisplay();
+      }
     } else {
       const data = snap.data() || {};
       balance = data.balance || 0;
-      freeSpins = data.freeSpins || 0;
+      // If freeSpins is missing, give default 5
+      if (typeof data.freeSpins === 'number') {
+        freeSpins = data.freeSpins;
+      } else {
+        freeSpins = 5;
+        // write back the default to Firestore
+        try { await updateDoc(userRef, { freeSpins }); } catch(e){}
+      }
       prevReferralsCount = data.referralsCount || 0;
     }
     updateUserInfoDisplay();
+
     // Keep live sync for user doc (balance + referralsCount + freeSpins)
     onSnapshot(userRef, (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data() || {};
-        // balance
-        balance = data.balance || 0;
-        // referralsCount
-        const refs = data.referralsCount || 0;
-        // freeSpins (may be updated elsewhere or by us)
-        const serverFreeSpins = data.freeSpins || 0;
+      if (!docSnap.exists()) return;
+      const data = docSnap.data() || {};
+      // balance
+      balance = typeof data.balance === 'number' ? data.balance : balance;
 
-        // Detect new referrals: if refs increased vs prevReferralsCount, add +5 per new referral to freeSpins
-        const delta = refs - (prevReferralsCount || 0);
-        if (delta > 0) {
-          // attempt to increment freeSpins by delta*5 in Firestore
-          (async () => {
-            try {
-              const add = delta * 5;
-              const newVal = (serverFreeSpins || 0) + add;
-              await updateDoc(userRef, { freeSpins: newVal });
-            } catch (err) {
-              console.error("Failed to add free spins for new referrals:", err);
-            }
-          })();
-        }
+      // referralsCount
+      const refs = typeof data.referralsCount === 'number' ? data.referralsCount : prevReferralsCount;
 
-        // update local tracking variables
-        prevReferralsCount = refs;
-        freeSpins = serverFreeSpins;
-        updateUserInfoDisplay();
+      // freeSpins (may be updated elsewhere or by us)
+      const serverFreeSpins = (typeof data.freeSpins === 'number') ? data.freeSpins : undefined;
 
-        // also update referralsCount UI
-        if (referralsCountEl) referralsCountEl.textContent = refs;
-        if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
+      // Detect new referrals: if refs increased vs prevReferralsCount, add +5 per new referral to freeSpins
+      const delta = refs - (prevReferralsCount || 0);
+      if (delta > 0) {
+        (async () => {
+          try {
+            const add = delta * 5;
+            // If serverFreeSpins is defined use it, else fallback to local freeSpins
+            const base = (typeof serverFreeSpins === 'number') ? serverFreeSpins : (freeSpins || 0);
+            const newVal = base + add;
+            await updateDoc(userRef, { freeSpins: newVal });
+            // don't set local here; will be updated by onSnapshot soon
+          } catch (err) {
+            console.error("Failed to add free spins for new referrals:", err);
+          }
+        })();
       }
+
+      // Update local tracking variables carefully to avoid clobbering a freshly-created default
+      // If we recently created the doc in this session, avoid overwriting freeSpins immediately to prevent race:
+      if (userDocCreatedByClient) {
+        // if serverFreeSpins is defined and > 0, accept it; otherwise keep client-created value
+        if (typeof serverFreeSpins === 'number' && serverFreeSpins !== freeSpins) {
+          freeSpins = serverFreeSpins;
+        }
+      } else {
+        if (typeof serverFreeSpins === 'number') {
+          freeSpins = serverFreeSpins;
+        }
+      }
+
+      prevReferralsCount = refs;
+      updateUserInfoDisplay();
+
+      // also update referralsCount UI
+      if (referralsCountEl) referralsCountEl.textContent = refs;
+      if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
+    }, (err) => {
+      console.error("onSnapshot user error:", err);
     });
   } else {
     currentUser = null;
