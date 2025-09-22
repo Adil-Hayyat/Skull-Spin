@@ -92,7 +92,7 @@ _skullPreload.onload = () => { /* loaded */ };
 // wheel image & prizes
 const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
-const prizes = ["100", "💀", "10", "💀", "00", "💀", "1000", "💀"];
+const prizes = ["📱", "💀", "📱", "💀", "📱", "💀", "📱", "💀"];
 const SECTOR_COUNT = prizes.length;
 const SECTOR_SIZE = 360 / SECTOR_COUNT;
 const sectors = [];
