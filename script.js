@@ -233,7 +233,7 @@ async function useFreeSpin() {
     const userRef = doc(db, "users", currentUser.uid);
     const newFree = Math.max(0, (freeSpins || 0) - 1);
     await updateDoc(userRef, { freeSpins: newFree });
-    // local will update via snapshot, but also update optimistic local copy
+    // optimistic local update
     freeSpins = newFree;
     updateFreeSpinDisplay();
 
