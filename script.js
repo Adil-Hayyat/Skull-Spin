@@ -5,6 +5,7 @@
 // - Clicking a free-spin decrements freeSpins by 1 (Firestore update) and spins the wheel (cost 0).
 // - When referralsCount increases, user receives +5 free spins per new referral.
 // - Skull.png background is shown only on desktop/laptop (window.innerWidth >= 700)
+// - Spin result selection is biased: 99.99% chance to land on "💀" sectors (even though sectors remain 4/4).
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -92,6 +93,7 @@ _skullPreload.onload = () => { /* loaded */ };
 // wheel image & prizes
 const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
+// Keep sectors 4/4 visually (as requested)
 const prizes = ["📱", "💀", "📱", "💀", "📱", "💀", "📱", "💀"];
 const SECTOR_COUNT = prizes.length;
 const SECTOR_SIZE = 360 / SECTOR_COUNT;
@@ -120,30 +122,55 @@ if (!window.__spinSound) {
 const spinSound = window.__spinSound || null;
 
 /* ==========================
+   PICK PRIZE HELPER (weighted / biased)
+   ========================== */
+/**
+ * Returns an index between 0..SECTOR_COUNT-1.
+ * Behavior: 99.99% chance return an index that's a "💀" sector,
+ * 0.01% chance return a non-💀 sector. Within each group pick randomly.
+ */
+function pickPrizeIndex() {
+  // gather indexes
+  const skullIndexes = [];
+  const nonSkullIndexes = [];
+  for (let i = 0; i < SECTOR_COUNT; i++) {
+    if (prizes[i] && String(prizes[i]).includes('💀')) skullIndexes.push(i);
+    else nonSkullIndexes.push(i);
+  }
+
+  // safety: if no skull found or none other, fallback to uniform random
+  if (skullIndexes.length === 0 || nonSkullIndexes.length === 0) {
+    return Math.floor(Math.random() * SECTOR_COUNT);
+  }
+
+  // bias: probability of skull (0.9999)
+  const skullProb = 0.9999;
+  if (Math.random() < skullProb) {
+    // pick random skull index
+    return skullIndexes[Math.floor(Math.random() * skullIndexes.length)];
+  } else {
+    // rare success for non-skull
+    return nonSkullIndexes[Math.floor(Math.random() * nonSkullIndexes.length)];
+  }
+}
+
+/* ==========================
    Skull background helpers
    ========================== */
 function applySkullBackground() {
-  // Apply inline styles for skull background (desktop)
   document.body.style.backgroundImage = `url('${SKULL_BG_SRC}')`;
   document.body.style.backgroundRepeat = "no-repeat";
   document.body.style.backgroundPosition = "center center";
-  document.body.style.backgroundSize = "cover"; // change to "contain" if you prefer
-  // keep existing background color defined by CSS (we don't overwrite backgroundColor)
-  // Add a CSS class if you want to target via CSS (optional)
+  document.body.style.backgroundSize = "cover";
   document.body.classList.add("has-skull-bg");
 }
-
 function removeSkullBackground() {
   document.body.style.backgroundImage = "none";
   document.body.classList.remove("has-skull-bg");
 }
-
 function updateSkullBackgroundByWidth() {
-  if (window.innerWidth >= DESKTOP_MIN_WIDTH) {
-    applySkullBackground();
-  } else {
-    removeSkullBackground();
-  }
+  if (window.innerWidth >= DESKTOP_MIN_WIDTH) applySkullBackground();
+  else removeSkullBackground();
 }
 
 /* ===== responsive canvas helpers ===== */
@@ -174,7 +201,6 @@ function resizeCanvasToContainer() {
 window.addEventListener("resize", debounce(resizeCanvasToContainer, 120));
 window.addEventListener("orientationchange", () => setTimeout(resizeCanvasToContainer, 120));
 window.addEventListener("load", () => {
-  // run after load to set initial background correctly
   setTimeout(() => {
     updateSkullBackgroundByWidth();
     resizeCanvasToContainer();
@@ -262,9 +288,7 @@ function updateUserInfoDisplay() {
   if (mobileBalance) mobileBalance.textContent = `Rs: ${balance}`;
   if (mobileEmail) mobileEmail.textContent = currentUser ? currentUser.email : '...';
   if (userIDSpan) userIDSpan.textContent = currentUser ? currentUser.uid : '...';
-  // Footer: show current user's email (or '...' if not logged in)
   if (footerEmail) footerEmail.textContent = currentUser ? currentUser.email : '...';
-  // Also update refer popup UI if present
   if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
 
   // update freeSpin button label if exists
@@ -272,8 +296,6 @@ function updateUserInfoDisplay() {
 }
 
 // ===== Free-Spin: UI & Logic =====
-
-// function that runs the free-spin action (shared by desktop & mobile buttons)
 async function useFreeSpin() {
   if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
   if ((freeSpins || 0) <= 0) { showStatus("⚠️ No free spins available!", "error"); return; }
@@ -282,12 +304,10 @@ async function useFreeSpin() {
 
   try {
     const userRef = doc(db, "users", currentUser.uid);
-    // Decrement freeSpins atomically on client (optimistic) and request update to Firestore
     const newFree = Math.max(0, (freeSpins || 0) - 1);
     try {
       await updateDoc(userRef, { freeSpins: newFree });
     } catch (err) {
-      // If update fails (race/offline), still try to continue with optimistic local state
       console.error("Failed to update freeSpins in Firestore:", err);
     }
     freeSpins = newFree;
@@ -303,26 +323,21 @@ async function useFreeSpin() {
   }
 }
 
-// Create or ensure freeSpinBtn exists; place next to existing buttons AND inside mobile menu
 function ensureFreeSpinButton() {
-  // desktop/inline button
   if (!freeSpinBtn) {
     freeSpinBtn = document.getElementById("freeSpinBtn");
     if (!freeSpinBtn) {
       freeSpinBtn = document.createElement("button");
       freeSpinBtn.id = "freeSpinBtn";
       freeSpinBtn.type = "button";
-      freeSpinBtn.className = ""; // keep default button styles
+      freeSpinBtn.className = "";
       freeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
-      // attach handler
       freeSpinBtn.addEventListener("click", useFreeSpin);
 
-      // insert into DOM: after multiSpinBtn or spinBtn
       const insertAfter = multiSpinBtn || spinBtn;
       if (insertAfter && insertAfter.parentElement) {
         insertAfter.parentElement.insertBefore(freeSpinBtn, insertAfter.nextSibling);
       } else {
-        // fallback: add to first .button-group if exists
         const bg = document.querySelector(".button-group");
         if (bg) bg.appendChild(freeSpinBtn);
         else document.body.appendChild(freeSpinBtn);
@@ -330,21 +345,18 @@ function ensureFreeSpinButton() {
     }
   }
 
-  // mobile button inside mobile actions
   if (mobileMenu) {
     const mobileActions = mobileMenu.querySelector(".mobile-actions");
     if (mobileActions && !mobileFreeSpinBtn) {
-      // try find existing by id
       mobileFreeSpinBtn = document.getElementById("mobileFreeSpinBtn");
       if (!mobileFreeSpinBtn) {
         mobileFreeSpinBtn = document.createElement("button");
         mobileFreeSpinBtn.id = "mobileFreeSpinBtn";
         mobileFreeSpinBtn.type = "button";
-        mobileFreeSpinBtn.className = ""; // default styles
+        mobileFreeSpinBtn.className = "";
         mobileFreeSpinBtn.style.marginTop = "6px";
         mobileFreeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
         mobileFreeSpinBtn.addEventListener("click", () => {
-          // close mobile menu then use free spin
           try { toggleMobileMenu(); } catch(e){}
           useFreeSpin();
         });
@@ -353,18 +365,15 @@ function ensureFreeSpinButton() {
     }
   }
 
-  // copy computed style from existing spinBtn to match look (color, padding)
   try {
     const refBtn = spinBtn || multiSpinBtn || document.querySelector("button");
     if (refBtn) {
       const style = window.getComputedStyle(refBtn);
       const bg = style.backgroundColor || style.background;
-      // apply to both buttons to match 1-SPIN & 5-SPIN appearance
       if (bg) {
         freeSpinBtn.style.background = bg;
         if (mobileFreeSpinBtn) mobileFreeSpinBtn.style.background = bg;
       }
-      // also copy color, padding, font-size
       freeSpinBtn.style.color = style.color;
       freeSpinBtn.style.padding = style.padding;
       freeSpinBtn.style.fontSize = style.fontSize;
@@ -376,14 +385,11 @@ function ensureFreeSpinButton() {
         mobileFreeSpinBtn.style.boxSizing = "border-box";
       }
     }
-  } catch (e) {
-    // ignore style copy failures
-  }
+  } catch (e) {}
 
   ensureFreeSpinButtonAppearance();
 }
 
-// Update label & sizing/visibility according to freeSpins and screen size
 function updateFreeSpinDisplay() {
   if (freeSpinBtn) freeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
   if (mobileFreeSpinBtn) mobileFreeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
@@ -392,12 +398,9 @@ function updateFreeSpinDisplay() {
 
 function ensureFreeSpinButtonAppearance() {
   if (!freeSpinBtn && !mobileFreeSpinBtn) return;
-
-  // Desktop button: visible inline; on very small screens it will still exist but mobile button is primary.
   if (freeSpinBtn) {
     try {
       freeSpinBtn.style.display = "inline-block";
-      // set min width similar to spinBtn
       const refBtn = spinBtn || multiSpinBtn;
       if (refBtn) {
         const refWidth = refBtn.getBoundingClientRect().width;
@@ -406,8 +409,6 @@ function ensureFreeSpinButtonAppearance() {
       freeSpinBtn.style.borderRadius = "10px";
     } catch (e){}
   }
-
-  // Mobile button: ensure it's visible inside mobile menu and styled full width
   if (mobileFreeSpinBtn) {
     mobileFreeSpinBtn.style.display = "block";
     mobileFreeSpinBtn.style.borderRadius = "10px";
@@ -416,7 +417,6 @@ function ensureFreeSpinButtonAppearance() {
   }
 }
 
-// helper to disable/enable spin buttons while spinning
 function disableAllSpinButtons(disabled) {
   try { if (spinBtn) spinBtn.disabled = disabled; } catch {}
   try { if (multiSpinBtn) multiSpinBtn.disabled = disabled; } catch {}
@@ -424,7 +424,7 @@ function disableAllSpinButtons(disabled) {
   try { if (mobileFreeSpinBtn) mobileFreeSpinBtn.disabled = disabled; } catch {}
 }
 
-// ===== Wheel animation & result handling (with sound) =====
+/* ======== UPDATED spinWheel: decide target index via pickPrizeIndex() ======== */
 async function spinWheel(cost = 10) {
   if (cost > 0 && balance < cost) {
     showStatus("⚠️ Not enough balance!", "error"); return null;
@@ -436,10 +436,22 @@ async function spinWheel(cost = 10) {
   }
 
   return new Promise((resolve) => {
-    const rounds = 5 + Math.floor(Math.random() * 3);
-    const randomExtra = Math.random() * 360;
-    const spinAngle = rounds * 360 + randomExtra;
-    const spinTimeTotal = 5000; // ms
+    // determine target sector index using biased picker
+    const targetIdx = pickPrizeIndex();
+    const targetCenterDeg = sectors[targetIdx].centerDeg; // center angle of target sector
+
+    // compute finalDegrees so that getSectorIndexFromStopDegrees(finalDegrees) => targetIdx
+    // Formula: wheelDegrees = centerDeg, and wheelDegrees = (360 - deg) % 360 => deg = (360 - centerDeg) % 360
+    let desiredDeg = (360 - targetCenterDeg) % 360;
+
+    // add small jitter to avoid perfectly centered stop (still stays in same sector)
+    const jitterRange = SECTOR_SIZE * 0.3; // up to ±30% of sector size
+    const jitter = (Math.random() - 0.5) * jitterRange;
+    desiredDeg = (desiredDeg + jitter + 360) % 360;
+
+    const rounds = 6 + Math.floor(Math.random() * 3); // full rotations
+    const spinAngle = rounds * 360 + desiredDeg;
+    const spinTimeTotal = 4800 + Math.floor(Math.random() * 600); // ms (slight randomness)
     const startTime = performance.now();
 
     if (spinSound) {
@@ -676,75 +688,52 @@ onAuthStateChanged(auth, async (user) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
-      // NEW USER: give default 5 free spins
       try {
-        // setDoc with merge:true to be safe
         await setDoc(userRef, { email: user.email || "", balance: 0, referralsCount: 0, freeSpins: 5 }, { merge: true });
         freeSpins = 5;
         balance = 0;
         prevReferralsCount = 0;
         userDocCreatedByClient = true;
-        // update UI immediately (optimistic) so user sees 5 right away
         updateUserInfoDisplay();
-        // prevent immediate snapshot overwrite for a short window
         setTimeout(() => { userDocCreatedByClient = false; }, 1200);
       } catch (err) {
         console.error("Failed to create user doc with default free spins:", err);
-        // fallback: local defaults
-        freeSpins = 5;
-        balance = 0;
-        prevReferralsCount = 0;
-        updateUserInfoDisplay();
+        freeSpins = 5; balance = 0; prevReferralsCount = 0; updateUserInfoDisplay();
       }
     } else {
       const data = snap.data() || {};
       balance = data.balance || 0;
-      // If freeSpins is missing, give default 5
-      if (typeof data.freeSpins === 'number') {
-        freeSpins = data.freeSpins;
-      } else {
+      if (typeof data.freeSpins === 'number') freeSpins = data.freeSpins;
+      else {
         freeSpins = 5;
-        // write back the default to Firestore
         try { await updateDoc(userRef, { freeSpins }); } catch(e){}
       }
       prevReferralsCount = data.referralsCount || 0;
     }
     updateUserInfoDisplay();
 
-    // Keep live sync for user doc (balance + referralsCount + freeSpins)
     onSnapshot(userRef, (docSnap) => {
       if (!docSnap.exists()) return;
       const data = docSnap.data() || {};
-      // balance
       balance = typeof data.balance === 'number' ? data.balance : balance;
-
-      // referralsCount
       const refs = typeof data.referralsCount === 'number' ? data.referralsCount : prevReferralsCount;
-
-      // freeSpins (may be updated elsewhere or by us)
       const serverFreeSpins = (typeof data.freeSpins === 'number') ? data.freeSpins : undefined;
 
-      // Detect new referrals: if refs increased vs prevReferralsCount, add +5 per new referral to freeSpins
       const delta = refs - (prevReferralsCount || 0);
       if (delta > 0) {
         (async () => {
           try {
             const add = delta * 5;
-            // If serverFreeSpins is defined use it, else fallback to local freeSpins
             const base = (typeof serverFreeSpins === 'number') ? serverFreeSpins : (freeSpins || 0);
             const newVal = base + add;
             await updateDoc(userRef, { freeSpins: newVal });
-            // don't set local here; will be updated by onSnapshot soon
           } catch (err) {
             console.error("Failed to add free spins for new referrals:", err);
           }
         })();
       }
 
-      // Update local tracking variables carefully to avoid clobbering a freshly-created default
-      // If we recently created the doc in this session, avoid overwriting freeSpins immediately to prevent race:
       if (userDocCreatedByClient) {
-        // if serverFreeSpins is defined and > 0, accept it; otherwise keep client-created value
         if (typeof serverFreeSpins === 'number' && serverFreeSpins !== freeSpins) {
           freeSpins = serverFreeSpins;
         }
@@ -756,8 +745,6 @@ onAuthStateChanged(auth, async (user) => {
 
       prevReferralsCount = refs;
       updateUserInfoDisplay();
-
-      // also update referralsCount UI
       if (referralsCountEl) referralsCountEl.textContent = refs;
       if (referUserIDEl) referUserIDEl.textContent = currentUser ? currentUser.uid : '...';
     }, (err) => {
@@ -777,22 +764,18 @@ onAuthStateChanged(auth, async (user) => {
     updateUserInfoDisplay();
   }
 
-  // ensure freeSpin button exists for both desktop & mobile
   ensureFreeSpinButton();
 });
 
 // ===== Refer popup logic =====
 function ensureReferPopupListeners() {
-  // if refer popup doesn't exist in DOM, do nothing
   if (!referBtn && !mobileReferBtn) return;
 
   const openRefer = async () => {
     if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
 
-    // set UID display
     if (referUserIDEl) referUserIDEl.textContent = currentUser.uid;
 
-    // fetch referralsCount (one-time) — onSnapshot already updates live, but fetch once to be sure
     try {
       const udoc = await getDoc(doc(db, "users", currentUser.uid));
       const data = udoc.exists() ? udoc.data() : {};
@@ -803,23 +786,19 @@ function ensureReferPopupListeners() {
       if (referralsCountEl) referralsCountEl.textContent = '0';
     }
 
-    // show modal
     if (referPopup) {
       referPopup.style.display = "flex";
       referPopup.setAttribute("aria-hidden", "false");
     }
   };
 
-  // attach handlers
   if (referBtn) referBtn.addEventListener("click", openRefer);
   if (mobileReferBtn) mobileReferBtn.addEventListener("click", () => { openRefer(); toggleMobileMenu(); });
 
-  // close handlers
   if (referClose) referClose.addEventListener("click", () => {
     if (referPopup) { referPopup.style.display = "none"; referPopup.setAttribute("aria-hidden", "true"); }
   });
 
-  // close when clicking outside modal
   window.addEventListener("click", (e) => {
     if (referPopup && e.target === referPopup) {
       referPopup.style.display = "none";
@@ -827,28 +806,24 @@ function ensureReferPopupListeners() {
     }
   });
 
-  // Escape key to close
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (referPopup) { referPopup.style.display = "none"; referPopup.setAttribute("aria-hidden", "true"); }
     }
   });
 
-  // copy referral link (COPY ONLY — no opening)
   if (copyReferralBtn) {
     copyReferralBtn.addEventListener("click", async () => {
       if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
       const base = "https://adil-hayyat.github.io/Skull-Spin/auth.html";
       const referralLink = `${base}?ref=${encodeURIComponent(currentUser.uid)}`;
 
-      // disable button while copying
       const origText = copyReferralBtn.textContent;
       copyReferralBtn.disabled = true;
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           await navigator.clipboard.writeText(referralLink);
         } else {
-          // fallback for older browsers
           const ta = document.createElement("textarea");
           ta.value = referralLink;
           ta.style.position = "fixed";
@@ -858,7 +833,6 @@ function ensureReferPopupListeners() {
           document.execCommand("copy");
           document.body.removeChild(ta);
         }
-        // user feedback
         copyReferralBtn.textContent = "Copied!";
         showStatus("✅ Referral link copied to clipboard!", "success");
       } catch (err) {
@@ -866,7 +840,6 @@ function ensureReferPopupListeners() {
         showStatus("❌ Failed to copy link. Please copy manually: " + referralLink, "error");
         try { window.prompt("Copy this link (Ctrl/Cmd+C):", referralLink); } catch(e){}
       } finally {
-        // restore button after short delay
         setTimeout(() => {
           try { copyReferralBtn.textContent = origText; copyReferralBtn.disabled = false; } catch(e){}
         }, 1500);
@@ -905,7 +878,6 @@ function toggleMobileMenu(){
 }
 hamburgerBtn?.addEventListener('click', toggleMobileMenu);
 
-// Map mobile buttons to main handlers
 if (mobileAddBalanceBtn) mobileAddBalanceBtn.addEventListener('click', () => { addBalanceBtn?.click(); toggleMobileMenu(); });
 if (mobileWithdrawBtn) mobileWithdrawBtn.addEventListener('click', () => { withdrawBtn?.click(); toggleMobileMenu(); });
 
