@@ -607,7 +607,7 @@ function ensureWithdrawModal() {
       <input id="withdrawNumberInput" type="text" placeholder="03XXXXXXXXX" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
     </div>
     <div style="margin-bottom:10px;">
-      <label style="font-weight:600;">Amount (min 1000 PKR)</label>
+      <label style="font-weight:600;">Enter Amount</label>
       <input id="withdrawAmountInput" type="number" min="1000" placeholder="Minimum 1000" style="width:100%; padding:8px; margin-top:6px; border-radius:8px; border:1px solid #ccc;">
     </div>
     <div id="withdrawError" style="color:#721c24; display:none; margin-bottom:8px;"></div>
