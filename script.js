@@ -4,7 +4,7 @@
 // - Free-Spin appears and works on both desktop and mobile.
 // - Clicking a free-spin decrements freeSpins by 1 (Firestore update) and spins the wheel (cost 0).
 // - When referralsCount increases, user receives +5 free spins per new referral.
-// - Attempts to avoid race where UI briefly shows 0 right after creating a new user doc.
+// - Skull.png background is shown only on desktop/laptop (window.innerWidth >= 700)
 
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
@@ -22,6 +22,10 @@ import {
   where
 } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 import { logout } from "./auth.js";
+
+// ===== CONFIG =====
+const DESKTOP_MIN_WIDTH = 700; // >=700px considered laptop/desktop for skull background
+const SKULL_BG_SRC = "./Skull.png"; // filename (relative). Change if your file name/path differs.
 
 // DOM refs
 const canvas = document.getElementById("wheel");
@@ -80,6 +84,11 @@ let freeSpins = 0; // local copy of free spins
 let prevReferralsCount = 0; // to detect new referrals
 let userDocCreatedByClient = false; // helps prevent race that sets freeSpins to 0 immediately after create
 
+// Preload skull background image (improves perceived performance)
+const _skullPreload = new Image();
+_skullPreload.src = SKULL_BG_SRC;
+_skullPreload.onload = () => { /* loaded */ };
+
 // wheel image & prizes
 const wheelImg = new Image();
 wheelImg.src = "./wheel.png";
@@ -110,7 +119,34 @@ if (!window.__spinSound) {
 }
 const spinSound = window.__spinSound || null;
 
-// ===== responsive canvas helpers =====
+/* ==========================
+   Skull background helpers
+   ========================== */
+function applySkullBackground() {
+  // Apply inline styles for skull background (desktop)
+  document.body.style.backgroundImage = `url('${SKULL_BG_SRC}')`;
+  document.body.style.backgroundRepeat = "no-repeat";
+  document.body.style.backgroundPosition = "center center";
+  document.body.style.backgroundSize = "cover"; // change to "contain" if you prefer
+  // keep existing background color defined by CSS (we don't overwrite backgroundColor)
+  // Add a CSS class if you want to target via CSS (optional)
+  document.body.classList.add("has-skull-bg");
+}
+
+function removeSkullBackground() {
+  document.body.style.backgroundImage = "none";
+  document.body.classList.remove("has-skull-bg");
+}
+
+function updateSkullBackgroundByWidth() {
+  if (window.innerWidth >= DESKTOP_MIN_WIDTH) {
+    applySkullBackground();
+  } else {
+    removeSkullBackground();
+  }
+}
+
+/* ===== responsive canvas helpers ===== */
 function resizeCanvasToContainer() {
   const rect = gameWrapper ? gameWrapper.getBoundingClientRect() : { width: window.innerWidth, height: window.innerHeight };
   const cssSide = Math.max(80, Math.floor(Math.min(rect.width, rect.height)));
@@ -131,10 +167,19 @@ function resizeCanvasToContainer() {
 
   // Ensure freeSpin button sizing/visibility after resize
   ensureFreeSpinButtonAppearance();
+
+  // Desktop-only skull background toggle (JS safeguard)
+  updateSkullBackgroundByWidth();
 }
 window.addEventListener("resize", debounce(resizeCanvasToContainer, 120));
 window.addEventListener("orientationchange", () => setTimeout(resizeCanvasToContainer, 120));
-window.addEventListener("load", () => setTimeout(resizeCanvasToContainer, 20));
+window.addEventListener("load", () => {
+  // run after load to set initial background correctly
+  setTimeout(() => {
+    updateSkullBackgroundByWidth();
+    resizeCanvasToContainer();
+  }, 20);
+});
 wheelImg.onload = () => resizeCanvasToContainer();
 
 function debounce(fn, wait = 80) {
