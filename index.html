@@ -7,10 +7,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Skull-Spin</title>
 
-  <!-- existing external stylesheet -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- Inline CSS for Skul-Spin splash -->
   <style>
     /* Splash overlay (full screen) */
     #skulSplash {
@@ -20,8 +18,16 @@
       align-items: center;
       justify-content: center;
       z-index: 9999;
-      background: #000; /* solid black background while splash runs */
+      background: #000; /* black background while splash runs */
       pointer-events: none;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #skulSplash.active {
+      visibility: visible;
+      opacity: 1;
     }
 
     #skulSplash .skul-inner {
@@ -34,7 +40,7 @@
     #skulSplash img {
       width: 100%;
       height: 100%;
-      object-fit: cover; /* image covers full screen */
+      object-fit: cover;
       user-select: none;
       -webkit-user-drag: none;
     }
@@ -173,8 +179,8 @@
     </div>
   </div>
 
-  <!-- Skul-Spin splash (full screen) -->
-  <div id="skulSplash" aria-hidden="true">
+  <!-- Skul-Spin splash -->
+  <div id="skulSplash">
     <div class="skul-inner" id="skulInner">
       <img id="skulImg" src="Skul-Spin.png" alt="Skul Spin" />
     </div>
@@ -220,7 +226,7 @@
         inner.classList.remove('skul-animate');
         void inner.offsetWidth;
         inner.classList.add('skul-animate');
-        splash.setAttribute('aria-hidden', 'false');
+        splash.classList.add('active');
 
         if (audio) {
           try {
@@ -234,7 +240,7 @@
       }
 
       function onAnimationEnd() {
-        splash.setAttribute('aria-hidden', 'true');
+        splash.classList.remove('active');
         inner.classList.remove('skul-animate');
         if (audio) { try { audio.pause(); audio.currentTime = 0; } catch {} }
       }
