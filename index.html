@@ -18,6 +18,7 @@
     <div class="header-right" id="headerRight">
       <button id="addBalanceBtn" type="button">Add Balance</button>
       <button id="withdrawBtn" type="button">Withdraw</button>
+      <!-- 🔹 New Refer Button -->
       <button id="referBtn" type="button">Refer</button>
       <button id="logoutBtn" type="button">Logout</button>
     </div>
@@ -43,6 +44,7 @@
     <div class="mobile-actions">
       <button id="mobileAddBalanceBtn">Add Balance</button>
       <button id="mobileWithdrawBtn">Withdraw</button>
+      <!-- 🔹 Refer in mobile menu -->
       <button id="mobileReferBtn">Refer</button>
     </div>
   </nav>
@@ -53,15 +55,9 @@
         <canvas id="wheel" width="800" height="800" aria-label="Game Wheel"></canvas>
       </div>
 
-      <!-- 🔹 Buttons -->
       <div class="button-group">
         <button id="spinBtn">1-SPIN (Rs: 10)</button>
         <button id="multiSpinBtn">5-SPIN (Rs:50)</button>
-      </div>
-
-      <!-- 🔹 Free-Spin Button -->
-      <div class="button-group free-spin-wrapper">
-        <button id="freeSpinBtn">Free-Spin: 0</button>
       </div>
     </section>
   </main>
@@ -119,7 +115,7 @@
     </div>
   </div>
 
-  <!-- Refer popup -->
+  <!-- 🔹 Refer popup -->
   <div id="referPopup" class="modal" aria-hidden="true" role="dialog" aria-modal="true" style="display:none;">
     <div id="referBox" class="modal-box" style="max-height:90vh; overflow-y:auto;">
       <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
@@ -144,6 +140,7 @@
             <path d="M3 21c0-3.866 3.134-7 7-7h4c3.866 0 7 3.134 7 7v1H3v-1z" fill="#fff" opacity="0.95"/>
           </svg>
         </a>
+        <!-- initial value '...' — will be replaced by logged-in user's email via script.js -->
         <span id="footerEmail" class="footer-email">...</span>
       </div>
 
