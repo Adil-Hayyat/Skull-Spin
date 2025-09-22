@@ -6,7 +6,69 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Skull-Spin</title>
+
+  <!-- existing external stylesheet -->
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Inline CSS for Skul-Spin splash (no need to change style.css) -->
+  <style>
+    /* Splash overlay */
+    #skulSplash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none; /* won't block user interaction */
+      z-index: 9999;
+      background: rgba(0,0,0,0); /* transparent backdrop so underlying page visible */
+      opacity: 1;
+    }
+
+    #skulSplash .skul-inner {
+      pointer-events: none;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      will-change: opacity, transform;
+      opacity: 0;
+      transform: scale(0.98);
+      /* ensure it sits visually above content but doesn't block clicks */
+    }
+
+    #skulSplash img {
+      max-width: 45vw;           /* nice size on desktops */
+      max-height: 60vh;
+      width: auto;
+      height: auto;
+      display:block;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    /* mobile adjustments */
+    @media (max-width: 700px) {
+      #skulSplash img {
+        max-width: 70vw;
+        max-height: 45vh;
+      }
+    }
+
+    /* Keyframes: fade-in, hold, fade-out (total 4s) */
+    @keyframes skulFade {
+      0%   { opacity: 0; transform: scale(0.96); }
+      15%  { opacity: 1; transform: scale(1.02); }  /* quick fade-in + tiny scale */
+      75%  { opacity: 1; transform: scale(1.00); }  /* hold visible */
+      100% { opacity: 0; transform: scale(0.98); }  /* fade-out */
+    }
+
+    /* Add a helper class to run the animation */
+    .skul-animate {
+      animation: skulFade 4s ease-in-out forwards;
+    }
+
+    /* When splash is finished, we will remove it from DOM (via JS) */
+  </style>
 </head>
 <body>
   <header>
@@ -131,6 +193,18 @@
     </div>
   </div>
 
+  <!-- Skul-Spin splash overlay (image + audio). This element will animate on page load -->
+  <div id="skulSplash" aria-hidden="true">
+    <div class="skul-inner" id="skulInner">
+      <img id="skulImg" src="Skul-Spin.png" alt="Skul Spin" />
+    </div>
+    <!-- Audio (will be played when animation starts). Preload to reduce delay. -->
+    <audio id="skulAudio" preload="auto">
+      <source src="Skul-Spin.mp3" type="audio/mpeg">
+      <!-- fallback: browser may not support MP3 -->
+    </audio>
+  </div>
+
   <footer id="siteFooter" class="site-footer" role="contentinfo">
     <div class="footer-content">
       <div class="footer-left">
@@ -181,6 +255,88 @@
         mobileMenu.style.display = open ? 'none' : 'block';
         mobileMenu.setAttribute('aria-hidden', String(open? 'true':'false'));
         hamburger.setAttribute('aria-expanded', String(!open));
+      });
+    })();
+  </script>
+
+  <!-- Skul-Spin splash script -->
+  <script>
+    (function () {
+      // Elements
+      const splash = document.getElementById('skulSplash');
+      const inner = document.getElementById('skulInner');
+      const audio = document.getElementById('skulAudio');
+
+      if (!splash || !inner) return;
+
+      // Start animation and audio on page load / pageshow (covers reloads and bfcache navigation)
+      function runSplashOnce() {
+        try {
+          // Reset state (in case user navigates back)
+          inner.classList.remove('skul-animate');
+          void inner.offsetWidth; // force reflow to restart animation
+
+          // Start animation
+          inner.classList.add('skul-animate');
+          splash.setAttribute('aria-hidden', 'false');
+
+          // Try to play audio (may be blocked by browser autoplay policy)
+          if (audio) {
+            try {
+              audio.currentTime = 0;
+              const p = audio.play();
+              if (p && typeof p.catch === 'function') {
+                p.catch((err) => {
+                  // Autoplay may be blocked; ignore silently
+                  // You can optionally prompt user to interact to hear sound.
+                  // console.log('skul audio play blocked', err);
+                });
+              }
+            } catch (err) {
+              // ignore
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      // Remove splash from screen once animation completes (4s)
+      function onAnimationEnd(ev) {
+        // hide and stop audio
+        try {
+          splash.setAttribute('aria-hidden', 'true');
+          inner.classList.remove('skul-animate');
+          // Pause and reset audio
+          if (audio) {
+            try { audio.pause(); audio.currentTime = 0; } catch (e) {}
+          }
+          // Optionally remove element from DOM to free memory
+          // splash.parentNode && splash.parentNode.removeChild(splash);
+        } catch (e) {}
+      }
+
+      // Hook animationend
+      inner.addEventListener('animationend', onAnimationEnd);
+      // Also handle pageshow for back/forward cache navigation
+      window.addEventListener('pageshow', (ev) => {
+        // if persisted (bfcache), re-run splash
+        runSplashOnce();
+      });
+
+      // Run on initial DOMContentLoaded (or right away if already loaded)
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        // small delay so page paints under splash nicely
+        setTimeout(runSplashOnce, 80);
+      } else {
+        window.addEventListener('DOMContentLoaded', () => setTimeout(runSplashOnce, 80));
+      }
+
+      // Optional: if user navigates away quickly, stop audio early
+      window.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          try { if (audio) { audio.pause(); audio.currentTime = 0; } } catch(e){}
+        }
       });
     })();
   </script>
