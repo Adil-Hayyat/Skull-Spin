@@ -1,4 +1,6 @@
 // script.js (responsive + mobile menu + original game logic + referrals + Free-Spin feature)
+// UPDATED: Free-Spin visible on mobile + desktop, new users get freeSpins: 5 by default
+
 import { auth, db } from "./firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
 import {
@@ -61,8 +63,9 @@ const copyReferralBtn = document.getElementById("copyReferralBtn");
 // Footer email element (will show current user's email)
 const footerEmail = document.getElementById("footerEmail");
 
-// Free spin button ref (we will create it)
+// Free spin button refs (desktop + mobile)
 let freeSpinBtn = null;
+let mobileFreeSpinBtn = null;
 
 // Local state
 let balance = 0;
@@ -219,106 +222,140 @@ function updateUserInfoDisplay() {
 
 // ===== Free-Spin: UI & Logic =====
 
-// Create or ensure freeSpinBtn exists; place next to existing buttons (desktop only)
+// function that runs the free-spin action (shared by desktop & mobile buttons)
+async function useFreeSpin() {
+  if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
+  if ((freeSpins || 0) <= 0) { showStatus("⚠️ No free spins available!", "error"); return; }
+
+  disableAllSpinButtons(true);
+
+  try {
+    const userRef = doc(db, "users", currentUser.uid);
+    const newFree = Math.max(0, (freeSpins || 0) - 1);
+    await updateDoc(userRef, { freeSpins: newFree });
+    // local will update via snapshot, but also update optimistic local copy
+    freeSpins = newFree;
+    updateFreeSpinDisplay();
+
+    const prize = await spinWheel(0);
+    if (prize) showPrize("🎁 You got: " + prize);
+  } catch (err) {
+    console.error("Failed to use free spin:", err);
+    showStatus("❌ Unable to use free spin right now.", "error");
+  } finally {
+    disableAllSpinButtons(false);
+  }
+}
+
+// Create or ensure freeSpinBtn exists; place next to existing buttons AND inside mobile menu
 function ensureFreeSpinButton() {
-  if (!spinBtn && !multiSpinBtn) return;
+  // desktop/inline button
   if (!freeSpinBtn) {
-    // create
-    freeSpinBtn = document.createElement("button");
-    freeSpinBtn.id = "freeSpinBtn";
-    freeSpinBtn.type = "button";
-    freeSpinBtn.style.cursor = "pointer";
-    freeSpinBtn.style.borderRadius = "8px";
-    freeSpinBtn.style.padding = "10px 14px";
-    freeSpinBtn.style.border = "none";
-    freeSpinBtn.style.background = "#e14a3c";
-    freeSpinBtn.style.color = "#fff";
-    freeSpinBtn.style.fontWeight = "600";
-    freeSpinBtn.style.marginLeft = "8px";
-    freeSpinBtn.style.boxSizing = "border-box";
-    freeSpinBtn.style.whiteSpace = "nowrap";
-    freeSpinBtn.textContent = `Free-Spin: ${freeSpins}`;
+    freeSpinBtn = document.getElementById("freeSpinBtn");
+    if (!freeSpinBtn) {
+      freeSpinBtn = document.createElement("button");
+      freeSpinBtn.id = "freeSpinBtn";
+      freeSpinBtn.type = "button";
+      freeSpinBtn.className = ""; // keep default button styles
+      freeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
+      // attach handler
+      freeSpinBtn.addEventListener("click", useFreeSpin);
 
-    // attach click
-    freeSpinBtn.addEventListener("click", async () => {
-      if (!currentUser) { showStatus("⚠️ Please login first!", "error"); return; }
-      if ((freeSpins || 0) <= 0) { showStatus("⚠️ No free spins available!", "error"); return; }
-
-      // disable to prevent double-clicks
-      disableAllSpinButtons(true);
-
-      // decrement in Firestore immediately (optimistic)
-      try {
-        const userRef = doc(db, "users", currentUser.uid);
-        // Use transaction-like update: fetch current doc and decrement safely
-        // But here we'll try updateDoc: ensure field exists (best-effort)
-        const newFree = Math.max(0, (freeSpins || 0) - 1);
-        await updateDoc(userRef, { freeSpins: newFree });
-        // local update (will also be updated by onSnapshot)
-        freeSpins = newFree;
-        updateFreeSpinDisplay();
-      } catch (err) {
-        console.error("Failed to decrement freeSpins:", err);
-        showStatus("❌ Unable to use free spin right now.", "error");
-        disableAllSpinButtons(false);
-        return;
+      // insert into DOM: after multiSpinBtn or spinBtn
+      const insertAfter = multiSpinBtn || spinBtn;
+      if (insertAfter && insertAfter.parentElement) {
+        insertAfter.parentElement.insertBefore(freeSpinBtn, insertAfter.nextSibling);
+      } else {
+        // fallback: add to first .button-group if exists
+        const bg = document.querySelector(".button-group");
+        if (bg) bg.appendChild(freeSpinBtn);
+        else document.body.appendChild(freeSpinBtn);
       }
-
-      // perform spin (cost 0)
-      try {
-        const prize = await spinWheel(0);
-        if (prize) showPrize("🎁 You got: " + prize);
-      } catch (err) {
-        console.error("Spin failed:", err);
-      } finally {
-        disableAllSpinButtons(false);
-      }
-    });
-
-    // insert into DOM: prefer after multiSpinBtn if exists, else after spinBtn
-    const insertAfter = multiSpinBtn || spinBtn;
-    if (insertAfter && insertAfter.parentElement) {
-      insertAfter.parentElement.insertBefore(freeSpinBtn, insertAfter.nextSibling);
-    } else {
-      // fallback: append to body
-      document.body.appendChild(freeSpinBtn);
     }
   }
+
+  // mobile button inside mobile actions
+  if (mobileMenu) {
+    const mobileActions = mobileMenu.querySelector(".mobile-actions");
+    if (mobileActions && !mobileFreeSpinBtn) {
+      // try find existing by id
+      mobileFreeSpinBtn = document.getElementById("mobileFreeSpinBtn");
+      if (!mobileFreeSpinBtn) {
+        mobileFreeSpinBtn = document.createElement("button");
+        mobileFreeSpinBtn.id = "mobileFreeSpinBtn";
+        mobileFreeSpinBtn.type = "button";
+        mobileFreeSpinBtn.className = ""; // default styles
+        mobileFreeSpinBtn.style.marginTop = "6px";
+        mobileFreeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
+        mobileFreeSpinBtn.addEventListener("click", () => {
+          // close mobile menu then use free spin
+          try { toggleMobileMenu(); } catch(e){}
+          useFreeSpin();
+        });
+        mobileActions.appendChild(mobileFreeSpinBtn);
+      }
+    }
+  }
+
+  // copy computed style from existing spinBtn to match look (color, padding)
+  try {
+    const refBtn = spinBtn || multiSpinBtn || document.querySelector("button");
+    if (refBtn) {
+      const style = window.getComputedStyle(refBtn);
+      const bg = style.backgroundColor || style.background;
+      // apply to both buttons to match 1-SPIN & 5-SPIN appearance
+      if (bg) {
+        freeSpinBtn.style.background = bg;
+        if (mobileFreeSpinBtn) mobileFreeSpinBtn.style.background = bg;
+      }
+      // also copy color, padding, font-size
+      freeSpinBtn.style.color = style.color;
+      freeSpinBtn.style.padding = style.padding;
+      freeSpinBtn.style.fontSize = style.fontSize;
+      if (mobileFreeSpinBtn) {
+        mobileFreeSpinBtn.style.color = style.color;
+        mobileFreeSpinBtn.style.padding = style.padding;
+        mobileFreeSpinBtn.style.fontSize = style.fontSize;
+        mobileFreeSpinBtn.style.width = "100%";
+      }
+    }
+  } catch (e) {
+    // ignore style copy failures
+  }
+
   ensureFreeSpinButtonAppearance();
 }
 
 // Update label & sizing/visibility according to freeSpins and screen size
 function updateFreeSpinDisplay() {
-  if (!freeSpinBtn) return;
-  freeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
-  // if freeSpins is 0 we still show the button (requirement: show button and number)
+  if (freeSpinBtn) freeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
+  if (mobileFreeSpinBtn) mobileFreeSpinBtn.textContent = `Free-Spin: ${freeSpins || 0}`;
   ensureFreeSpinButtonAppearance();
 }
 
 function ensureFreeSpinButtonAppearance() {
-  if (!freeSpinBtn) return;
-  const isLaptop = window.innerWidth >= 700; // treat >=700 as laptop/desktop
-  if (!isLaptop) {
-    freeSpinBtn.style.display = "none";
-    return;
-  }
-  // show
-  freeSpinBtn.style.display = "inline-block";
+  if (!freeSpinBtn && !mobileFreeSpinBtn) return;
 
-  // make width equal-ish to existing buttons (copy computed width of spinBtn or multiSpinBtn)
-  const refBtn = spinBtn || multiSpinBtn;
-  if (refBtn) {
+  // Desktop button: always visible (we will show on mobile too via mobileFreeSpinBtn)
+  if (freeSpinBtn) {
     try {
-      const refStyle = window.getComputedStyle(refBtn);
-      const refWidth = refBtn.getBoundingClientRect().width;
-      // set minWidth to reference width so it visually matches
-      freeSpinBtn.style.minWidth = Math.max(80, Math.floor(refWidth)) + "px";
-      // match padding vertically
-      freeSpinBtn.style.padding = refStyle.padding;
-      freeSpinBtn.style.fontSize = refStyle.fontSize;
-    } catch (e) {
-      // ignore
-    }
+      freeSpinBtn.style.display = "inline-block";
+      // set min width similar to spinBtn
+      const refBtn = spinBtn || multiSpinBtn;
+      if (refBtn) {
+        const refWidth = refBtn.getBoundingClientRect().width;
+        if (refWidth) freeSpinBtn.style.minWidth = Math.max(80, Math.floor(refWidth)) + "px";
+      }
+      freeSpinBtn.style.borderRadius = "10px";
+    } catch (e){}
+  }
+
+  // Mobile button: ensure it's visible inside mobile menu and styled full width
+  if (mobileFreeSpinBtn) {
+    mobileFreeSpinBtn.style.display = "block";
+    mobileFreeSpinBtn.style.borderRadius = "10px";
+    mobileFreeSpinBtn.style.width = "100%";
+    mobileFreeSpinBtn.style.boxSizing = "border-box";
   }
 }
 
@@ -327,6 +364,7 @@ function disableAllSpinButtons(disabled) {
   try { if (spinBtn) spinBtn.disabled = disabled; } catch {}
   try { if (multiSpinBtn) multiSpinBtn.disabled = disabled; } catch {}
   try { if (freeSpinBtn) freeSpinBtn.disabled = disabled; } catch {}
+  try { if (mobileFreeSpinBtn) mobileFreeSpinBtn.disabled = disabled; } catch {}
 }
 
 // ===== Wheel animation & result handling (with sound) =====
@@ -581,10 +619,10 @@ onAuthStateChanged(auth, async (user) => {
     const userRef = doc(db, "users", user.uid);
     const snap = await getDoc(userRef);
     if (!snap.exists()) {
-      // ensure both referralsCount and freeSpins exist
-      await setDoc(userRef, { email: user.email, balance: 0, referralsCount: 0, freeSpins: 0 });
+      // NEW USER: give default 5 free spins
+      await setDoc(userRef, { email: user.email, balance: 0, referralsCount: 0, freeSpins: 5 });
       balance = 0;
-      freeSpins = 0;
+      freeSpins = 5;
       prevReferralsCount = 0;
     } else {
       const data = snap.data() || {};
@@ -607,14 +645,12 @@ onAuthStateChanged(auth, async (user) => {
         // Detect new referrals: if refs increased vs prevReferralsCount, add +5 per new referral to freeSpins
         const delta = refs - (prevReferralsCount || 0);
         if (delta > 0) {
-          // attempt to increment freeSpins by delta*5 in Firestore (so server and client stay in sync)
+          // attempt to increment freeSpins by delta*5 in Firestore
           (async () => {
             try {
               const add = delta * 5;
-              // read current server freeSpins, then update
               const newVal = (serverFreeSpins || 0) + add;
               await updateDoc(userRef, { freeSpins: newVal });
-              // local update will be applied via subsequent snapshot
             } catch (err) {
               console.error("Failed to add free spins for new referrals:", err);
             }
@@ -637,7 +673,7 @@ onAuthStateChanged(auth, async (user) => {
     if (mobileBalance) mobileBalance.textContent = `Rs: 0`;
     if (mobileEmail) mobileEmail.textContent = '...';
     if (userIDSpan) userIDSpan.textContent = '...';
-    if (footerEmail) footerEmail.textContent = '...'; // show '...' when not logged in
+    if (footerEmail) footerEmail.textContent = '...';
     if (referralsCountEl) referralsCountEl.textContent = '0';
     if (referUserIDEl) referUserIDEl.textContent = '...';
     freeSpins = 0;
@@ -645,7 +681,7 @@ onAuthStateChanged(auth, async (user) => {
     updateUserInfoDisplay();
   }
 
-  // ensure freeSpin button exists for logged in user (or always create but hide on mobile)
+  // ensure freeSpin button exists for both desktop & mobile
   ensureFreeSpinButton();
 });
 
