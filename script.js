@@ -690,7 +690,7 @@ onAuthStateChanged(auth, async (user) => {
     if (!snap.exists()) {
       try {
         await setDoc(userRef, { email: user.email || "", balance: 0, referralsCount: 0, freeSpins: 5 }, { merge: true });
-        freeSpins = 5;
+        freeSpins = 1;
         balance = 0;
         prevReferralsCount = 0;
         userDocCreatedByClient = true;
@@ -698,14 +698,14 @@ onAuthStateChanged(auth, async (user) => {
         setTimeout(() => { userDocCreatedByClient = false; }, 1200);
       } catch (err) {
         console.error("Failed to create user doc with default free spins:", err);
-        freeSpins = 5; balance = 0; prevReferralsCount = 0; updateUserInfoDisplay();
+        freeSpins = 1; balance = 0; prevReferralsCount = 0; updateUserInfoDisplay();
       }
     } else {
       const data = snap.data() || {};
       balance = data.balance || 0;
       if (typeof data.freeSpins === 'number') freeSpins = data.freeSpins;
       else {
-        freeSpins = 5;
+        freeSpins = 1;
         try { await updateDoc(userRef, { freeSpins }); } catch(e){}
       }
       prevReferralsCount = data.referralsCount || 0;
