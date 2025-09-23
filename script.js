@@ -508,7 +508,7 @@ async function spinWheel(cost = 100) {
 spinBtn?.addEventListener("click", async () => {
   spinBtn.disabled = true;
   try {
-    const prize = await spinWheel(10);
+    const prize = await spinWheel(100);
     if (prize) showPrize("🎁 You got: " + prize);
   } finally { spinBtn.disabled = false; }
 });
