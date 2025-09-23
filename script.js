@@ -514,10 +514,10 @@ spinBtn?.addEventListener("click", async () => {
 });
 
 multiSpinBtn?.addEventListener("click", async () => {
-  if (balance < 50) { showStatus("⚠️ Not enough balance!", "error"); return; }
+  if (balance < 1000) { showStatus("⚠️ Not enough balance!", "error"); return; }
   multiSpinBtn.disabled = true;
   spinBtn.disabled = true;
-  balance -= 50;
+  balance -= 1000;
   updateUserInfoDisplay();
   try { await saveBalance(); } catch {}
   const results = [];
