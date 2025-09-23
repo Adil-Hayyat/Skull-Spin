@@ -425,7 +425,7 @@ function disableAllSpinButtons(disabled) {
 }
 
 /* ======== UPDATED spinWheel: decide target index via pickPrizeIndex() ======== */
-async function spinWheel(cost = 10) {
+async function spinWheel(cost = 100) {
   if (cost > 0 && balance < cost) {
     showStatus("⚠️ Not enough balance!", "error"); return null;
   }
