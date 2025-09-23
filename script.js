@@ -522,7 +522,7 @@ multiSpinBtn?.addEventListener("click", async () => {
   try { await saveBalance(); } catch {}
   const results = [];
   try {
-    for (let i=0;i<5;i++){
+    for (let i=0;i<100;i++){
       const prize = await spinWheel(0);
       if (prize) results.push(prize);
       await new Promise(r=>setTimeout(r,160));
